@@ -152,7 +152,7 @@ read_data	'''+system.name+'''.data
 
 compute atom_pe all pe/atom
 ''').splitlines()
-lmp = lammps()
+lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 for line in commands:
 	lmp.command(line)
 
@@ -164,11 +164,14 @@ def calculate_error_from_list(params):
 		t.written_to_lammps = False
 	
 	error = calculate_error(system)
-	logfile.write('%f\n' % error)
+	#logfile.write('%f\n' % error)
+	print error
 	return error
 
 from scipy.optimize import minimize
-minimize(calculate_error_from_list, pack_params(system), method='Nelder-Mead', options={'disp':True})
+#minimize(calculate_error_from_list, pack_params(system), method='Nelder-Mead', options={'disp':True,'maxfev':1000000,'maxiter':1000000})
+minimize(calculate_error_from_list, pack_params(system), method='Powell', options={'disp':True,'maxfev':1000000}) #seems to work better, at least for small number of parameters
+
 
 os.chdir('..')
 
