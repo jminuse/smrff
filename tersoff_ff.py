@@ -4,21 +4,17 @@ sys.path.append("/fs/home/jms875/Library/2.0/tools")
 import utils, files, g09
 
 def set_lammps_parameters(system):
+	f = open(system.name+'.tersoff')
+	
+	f.close()
+	lmp.command('pair_coeff * * tersoff '+system.name+'.tersoff Pb I O'''+(' NULL'*(len(system.atom_types)-3)) )
+	
 	for t in system.atom_types:
 		if not t.written_to_lammps:
 			t.written_to_lammps = True
 			if hasattr(t,'vdw_e'):
 				lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
 				lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
-			if hasattr(t,'D0'):
-				for t2 in system.atom_types:
-					if hasattr(t2,'D0'):
-						i,j = sorted((t.lammps_type, t2.lammps_type))
-						#Lorentz-Berthelot mixing rules: http://www.sciencedirect.com/science/article/pii/S0927025608000803
-						D0 = (t.D0 * t2.D0)**0.5
-						alpha = 0.5*(t.alpha + t2.alpha)
-						r0 = (t.r0 * t2.r0)**0.5 + math.log(2/alpha)
-						lmp.command('pair_coeff %d %d morse %f	%f	%f' % (i, j, D0, alpha, r0) )
 	for t in system.bond_types:
 		if not t.written_to_lammps:
 			t.written_to_lammps = True
@@ -170,7 +166,7 @@ files.write_lammps_data(system)
 
 commands = ('''units real
 atom_style full
-pair_style hybrid/overlay lj/cut/coul/cut 100.0 morse 10.0
+pair_style hybrid/overlay lj/cut/coul/cut 100.0 tersoff
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
