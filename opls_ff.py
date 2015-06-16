@@ -156,7 +156,6 @@ lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 for line in commands:
 	lmp.command(line)
 
-logfile = open('error.txt', 'w')
 def calculate_error_from_list(params):
 	unpack_params(params, system)
 	
@@ -164,7 +163,6 @@ def calculate_error_from_list(params):
 		t.written_to_lammps = False
 	
 	error = calculate_error(system)
-	#logfile.write('%f\n' % error)
 	print error
 	return error
 
