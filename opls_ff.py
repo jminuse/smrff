@@ -52,6 +52,20 @@ def calculate_error(system):
 	
 	error = (energy_error + force_error) / len(system.atoms)
 	
+	print energy_error, force_error
+	
+	#add soft constraints
+	def softmin(x,xmin):
+		return xmin/(x-xmin) if x>xmin else 1e10
+	for t in system.atom_types:
+		error += softmin(t.vdw_e,0.001)
+		error += softmin(t.vdw_r,0.5)
+	for t in system.bond_types:
+		error += softmin(t.e,10.0)
+		error += softmin(t.r,0.5)
+	for t in system.angle_types:
+		error += softmin(t.e,1.0)
+	
 	return error
 
 def pack_params(system):
@@ -163,7 +177,7 @@ def calculate_error_from_list(params):
 		t.written_to_lammps = False
 	
 	error = calculate_error(system)
-	print error
+
 	return error
 
 from scipy.optimize import minimize

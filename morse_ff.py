@@ -7,16 +7,17 @@ def set_lammps_parameters(system):
 	for t in system.atom_types:
 		if not t.written_to_lammps:
 			t.written_to_lammps = True
-			lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
-			lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
+			if hasattr(t,'vdw_e'):
+				lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
+				lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
 			if hasattr(t,'D0'):
 				for t2 in system.atom_types:
-					i,j = sorted((t.lammps_type, t2.lammps_type))
-					#Lorentz-Berthelot mixing rules: http://www.sciencedirect.com/science/article/pii/S0927025608000803
-					D0 = (t.D0 * t2.D0)**0.5
-					alpha = 0.5*(t.alpha + t2.alpha)
-					r0 = (t.r0 * t2.r0)**0.5 + math.log(2/alpha)
-					if t is not t2:
+					if hasattr(t2,'D0'):
+						i,j = sorted((t.lammps_type, t2.lammps_type))
+						#Lorentz-Berthelot mixing rules: http://www.sciencedirect.com/science/article/pii/S0927025608000803
+						D0 = (t.D0 * t2.D0)**0.5
+						alpha = 0.5*(t.alpha + t2.alpha)
+						r0 = (t.r0 * t2.r0)**0.5 + math.log(2/alpha)
 						lmp.command('pair_coeff %d %d morse %f	%f	%f' % (i, j, D0, alpha, r0) )
 	for t in system.bond_types:
 		if not t.written_to_lammps:
@@ -61,6 +62,25 @@ def calculate_error(system):
 	
 	error = (energy_error + force_error) / len(system.atoms)
 	
+	print energy_error, force_error
+	
+	#add soft constraints
+	def softmin(x,xmin):
+		return xmin/(x-xmin) if x>xmin else 1e10
+	for t in system.atom_types:
+		if hasattr(t,'vdw_e'):
+			error += softmin(t.vdw_r,0.5)
+			error += softmin(t.vdw_e,0.001)
+		if hasattr(t,'D0'):
+			error += softmin(t.D0,0.01)
+			error += softmin(t.alpha,0.5)
+			error += softmin(t.r0,0.5)
+	for t in system.bond_types:
+		error += softmin(t.e,10.0)
+		error += softmin(t.r,0.5)
+	for t in system.angle_types:
+		error += softmin(t.e,1.0)
+	
 	return error
 
 def pack_params(system):
@@ -103,8 +123,8 @@ I = 838
 extra = {
 	(H_, I_): (100.0, 2.1), 
 	(N_, H_, I_): (10.0, 180.0), 
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.4, vdw_e=1.0, vdw_r=3.0),
-	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.2, vdw_e=1.0, vdw_r=3.0),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.4, vdw_e=1.0, vdw_r=3.0, D0=5.0, alpha=1.5, r0=2.8),
+	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.2, vdw_e=1.0, vdw_r=3.0, D0=5.0, alpha=1.5, r0=2.8),
 	(Pb_, I_): (100.0, 2.9), 
 	(I_, Pb_, I_): (10.0, 95.0),
 	(13, 53, 54, 66): (0.0,0.0,0.0),
@@ -168,11 +188,6 @@ lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 for line in commands:
 	lmp.command(line)
 
-for t in system.atom_types:
-	t.D0 = 0.0
-	t.alpha = 1.0
-	t.r0 = t.vdw_r
-
 def calculate_error_from_list(params):
 	unpack_params(params, system)
 	
@@ -180,7 +195,7 @@ def calculate_error_from_list(params):
 		t.written_to_lammps = False
 	
 	error = calculate_error(system)
-	print error
+	
 	return error
 
 from scipy.optimize import minimize
