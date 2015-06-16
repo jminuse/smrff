@@ -3,11 +3,34 @@ from lammps import lammps
 sys.path.append("/fs/home/jms875/Library/2.0/tools")
 import utils, files, g09
 
-def set_lammps_parameters(system):
-	f = open(system.name+'.tersoff')
-	
+def write_tersoff_file(system):
+	types = ['Pb', 'I', 'O']
+	f = open(system.name+'.tersoff', 'w')
+	count_params = 0
+	for i in range(3):
+		for j in range(3):
+			for k in range(3):
+				m = 1.0 #can only be 1.0 or 3.0 by definition
+				gamma = 1.0
+				lambda3 = 0.0
+				costheta0 = 0.0
+				
+				A, B, c, d, n, beta, lambda2, R, D, lambda1 = [0.0 for x in range(10)]
+				
+				if i==0:
+					c, d, n, beta, lambda3 = 10000, 2, 0.000001, -4
+				
+				'''
+				c, d, n, beta, lambda2, R, D, lambda1, A, B = params[count_params*10 + 1: count_params*10 + 11]
+				A, B = 0.0, 0.0
+				count_params += 1
+				'''
+				f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (types[i], types[j], types[k], m, gamma, lambda3, c, d, costheta0, n, beta, lambda2, B, R, D, lambda1, A))
 	f.close()
-	lmp.command('pair_coeff * * tersoff '+system.name+'.tersoff Pb I O'''+(' NULL'*(len(system.atom_types)-3)) )
+
+def set_lammps_parameters(system):
+	write_tersoff_file(system)
+	lmp.command('pair_coeff * * tersoff '+system.name+'.tersoff Pb I O'''+(' NULL'*(len(system.atom_types)-3)) ) #is it possible to do this with the LAMMPS set command?
 	
 	for t in system.atom_types:
 		if not t.written_to_lammps:
@@ -127,7 +150,7 @@ extra = {
 	(54, 53, 54, 66): (0.0,0.0,0.0),
 }
 
-system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_morse')
+system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -175,7 +198,6 @@ special_bonds lj/coul 0.0 0.0 0.5
 boundary f f f
 read_data	'''+system.name+'''.data
 
-pair_coeff * * morse 0.0 1.0 1.0
 pair_coeff * * lj/cut/coul/cut 0.0 1.0
 
 compute atom_pe all pe/atom
