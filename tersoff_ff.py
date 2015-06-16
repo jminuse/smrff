@@ -18,7 +18,7 @@ def write_tersoff_file(system):
 				A, B, c, d, n, beta, lambda2, R, D, lambda1 = [0.0 for x in range(10)]
 				
 				if i==0:
-					c, d, n, beta, lambda3 = 10000, 2, 0.000001, -4
+					c, d, n, beta, lambda3 = 10000, 2, 1, 0.000001, -4
 				
 				'''
 				c, d, n, beta, lambda2, R, D, lambda1, A, B = params[count_params*10 + 1: count_params*10 + 11]
