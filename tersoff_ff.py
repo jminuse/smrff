@@ -272,7 +272,7 @@ for line in commands:
 
 system.tersoff_params = read_tersoff_file('input.tersoff')
 
-log = open(system.name+'.params', 'a')
+log = open(system.name+'.params', 'w')
 def calculate_error_from_list(params):
 	unpack_params(params, system)
 	
