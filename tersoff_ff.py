@@ -90,7 +90,7 @@ def calculate_error(system):
 			if xmin==0.0:
 				tol = 0.1
 		if x>xmin+tol: return 0.0
-		elif x>xmin: return (xmin+tol-x)**2
+		elif x>xmin: return 1e3*((xmin+tol-x)/tol)**2
 		else: return 1e10
 	def softmax(x,xmax,tol=None):
 		if not tol:
@@ -98,7 +98,7 @@ def calculate_error(system):
 			if xmax==0.0:
 				tol = 0.1
 		if x<xmax-tol: return 0.0
-		elif x<xmax: return (x-xmax-tol)**2
+		elif x<xmax: return 1e3*((x-xmax-tol)/tol)**2
 		else: return 1e10
 	#add soft constraints
 	for t in system.atom_types:
@@ -114,6 +114,15 @@ def calculate_error(system):
 		error += softmin(t.r,0.5)
 	for t in system.angle_types:
 		error += softmin(t.e,1.0)
+	for t in system.tersoff_params:
+		if t.e1=='Pb' and t.e2!='Pb':
+			error += softmin(t.lambda3, 0.0)
+			error += softmin(t.c, 0.0)
+			error += softmin(t.beta, 0.0)
+			error += softmin(t.lambda2, 0.0)
+			error += softmin(t.B, 0.0)
+			error += softmin(t.lambda1, 0.0)
+			error += softmin(t.A, 0.0)
 	
 	return error
 
@@ -192,7 +201,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			system.add(total, count*200.0)
 			count += 1
 
-system.box_size[0] = count*200+200 #make system big enough to hold all atoms
+system.box_size[0] = count*400+200 #make system big enough to hold all atoms
 
 #group molecules by .element_string
 system.molecules_by_elements = {}
