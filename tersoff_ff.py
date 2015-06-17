@@ -86,30 +86,38 @@ def calculate_error(system):
 	for t in system.angle_types:
 		constraint_error += softmin(t.e,1.0)
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2!='Pb' and 'O' not in [t.e2, t.e3]:
+		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			constraint_error += softmin(t.lambda3, 0.0)
-			constraint_error += softmin(t.c, 0.0)
+			constraint_error += softmin(t.c, 0.0, 1e-6)
 			constraint_error += softmin(t.beta, 0.0)
 			constraint_error += softmin(t.lambda2, 0.0)
 			constraint_error += softmin(t.B, 0.0)
 			constraint_error += softmin(t.lambda1, 0.0)
 			constraint_error += softmin(t.A, 0.0)
+			
+			constraint_error += softmin(t.costheta0, -1.0)
+			constraint_error += softmax(t.costheta0, 1.0)
+			
+			constraint_error += softmax(t.beta, 1e3)
 	
-		powermint = int(t.m)
-		assert t.c >= 0.0 
-		assert t.d >= 0.0 
-		assert t.n >= 0.0 
-		assert t.beta >= 0.0 
-		assert t.lambda2 >= 0.0 
-		assert t.B >= 0.0 
-		assert t.R >= 0.0 
-		assert t.D >= 0.0 
-		assert t.D <= t.R
-		assert t.lambda1 >= 0.0 
-		assert t.A >= 0.0 
-		assert t.m - powermint == 0.0
-		assert (powermint == 3 or powermint == 1)
-		assert t.gamma >= 0.0
+		try:
+			powermint = int(t.m)
+			assert t.c >= 0.0 
+			assert t.d >= 0.0 
+			assert t.n >= 0.0 
+			assert t.beta >= 0.0 
+			assert t.lambda2 >= 0.0 
+			assert t.B >= 0.0 
+			assert t.R >= 0.0 
+			assert t.D >= 0.0 
+			assert t.D <= t.R
+			assert t.lambda1 >= 0.0 
+			assert t.A >= 0.0 
+			assert t.m - powermint == 0.0
+			assert (powermint == 3 or powermint == 1)
+			assert t.gamma >= 0.0
+		except AssertionError:
+			return 1e10+constraint_error+random.random()
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
@@ -160,7 +168,7 @@ def pack_params(system):
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2!='Pb' and 'O' not in [t.e2, t.e3]:
+		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
 	return params
 
@@ -179,7 +187,7 @@ def unpack_params(params, system):
 		t.e = tuple(params[i:i+4])
 		i += 4
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2!='Pb' and 'O' not in [t.e2, t.e3]:
+		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			num_params=10
 			t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 			i+=num_params
@@ -272,9 +280,8 @@ def calculate_error_from_list(params):
 	
 	return error
 
-from scipy.optimize import minimize
-#minimize(calculate_error_from_list, pack_params(system), method='Nelder-Mead', options={'disp':True,'maxfev':1000000,'maxiter':1000000})
-minimize(calculate_error_from_list, pack_params(system), method='Powell', options={'disp':True,'maxfev':1000000}) #seems to work better, at least for small number of parameters
+from scipy.optimize import fmin_powell
+fmin_powell(calculate_error_from_list, pack_params(system), full_output=True, ftol=0.0)
 
 
 os.chdir('..')
