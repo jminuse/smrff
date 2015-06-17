@@ -121,7 +121,7 @@ def pack_params(system):
 		params += list(t.e)
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2!='Pb':
-			params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A]
+			params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
 	return params
 
 def unpack_params(params, system):
@@ -140,8 +140,9 @@ def unpack_params(params, system):
 		i += 4
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2!='Pb':
-			t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A = params[i:i+12]
-			i+=12
+			num_params=10
+			t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
+			i+=num_params
 
 I_ = 66
 H_ = 54
