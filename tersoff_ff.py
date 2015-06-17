@@ -3,29 +3,27 @@ from lammps import lammps
 sys.path.append("/fs/home/jms875/Library/2.0/tools")
 import utils, files, g09
 
+def read_tersoff_file(filename):
+	# format of a single entry (one or more lines):
+	#   element 1, element 2, element 3, 
+	#           m, gamma, lambda3, c, d, costheta0, 
+	#           n, beta, lambda2, B, R, D, lambda1, A
+	tersoff_params = []
+	contents = ''.join([line for line in open(filename) if not line.startswith('#')])
+	lines = contents.split('\n\n') #expects entries to be separated by a blank line
+	for line in lines:
+		line = line.replace('\n','') #an entry can span any number of lines
+		columns = line.split()
+		if len(columns)==17:
+			e1, e2, e3, m, gamma, lambda3, c, d, costheta0, n, beta, lambda2, B, R, D, lambda1, A = [ (float(s) if s[-1].isdigit() else s) for s in columns]
+			tersoff_params.append( utils.Struct(e1=e1, e2=e2, e3=e3, m=m, gamma=gamma, lambda3=lambda3, c=c, d=d, costheta0=costheta0, n=n, beta=beta, lambda2=lambda2, B=B, R=R, D=D, lambda1=lambda1, A=A) )
+	return tersoff_params
+
 def write_tersoff_file(system):
-	types = ['Pb', 'I', 'O']
 	f = open(system.name+'.tersoff', 'w')
-	count_params = 0
-	for i in range(3):
-		for j in range(3):
-			for k in range(3):
-				m = 1.0 #can only be 1.0 or 3.0 by definition
-				gamma = 1.0
-				lambda3 = 0.0
-				costheta0 = 0.0
-				
-				A, B, c, d, n, beta, lambda2, R, D, lambda1 = [0.0 for x in range(10)]
-				
-				if i==0:
-					c, d, n, beta, lambda3 = 10000, 2, 1, 0.000001, -4
-				
-				'''
-				c, d, n, beta, lambda2, R, D, lambda1, A, B = params[count_params*10 + 1: count_params*10 + 11]
-				A, B = 0.0, 0.0
-				count_params += 1
-				'''
-				f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (types[i], types[j], types[k], m, gamma, lambda3, c, d, costheta0, n, beta, lambda2, B, R, D, lambda1, A))
+	for t in system.tersoff_params:
+		t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A
+		f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
 	f.close()
 
 def set_lammps_parameters(system):
@@ -114,6 +112,9 @@ def pack_params(system):
 		if len(t.e)==3:
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
+	for t in system.tersoff_params:
+		if t.e1=='Pb' and t.e2!='Pb':
+			params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A]
 	return params
 
 def unpack_params(params, system):
@@ -130,6 +131,10 @@ def unpack_params(params, system):
 	for t in system.dihedral_types:
 		t.e = tuple(params[i:i+4])
 		i += 4
+	for t in system.tersoff_params:
+		if t.e1=='Pb' and t.e2!='Pb':
+			t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A = params[i:i+12]
+			i+=12
 
 I_ = 66
 H_ = 54
@@ -205,6 +210,8 @@ compute atom_pe all pe/atom
 lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 for line in commands:
 	lmp.command(line)
+
+system.tersoff_params = read_tersoff_file('test_tersoff.tersoff')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
