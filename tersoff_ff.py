@@ -84,11 +84,21 @@ def calculate_error(system):
 	print energy_error, force_error
 	
 	#define soft constraint functions
-	def softmin(x,xmin):
-		return xmin/(x-xmin) if x>xmin else 1e10
-	def softmax(x,xmax):
-		if x<xmax*0.9: return 0.0
-		if x<xmax: return (x-xmax*0.9)**2
+	def softmin(x,xmin,tol=None):
+		if not tol:
+			tol = abs(xmin)*0.1
+			if xmin==0.0:
+				tol = 0.1
+		if x>xmin+tol: return 0.0
+		elif x>xmin: return (xmin+tol-x)**2
+		else: return 1e10
+	def softmax(x,xmax,tol=None):
+		if not tol:
+			tol = abs(xmax)*0.1
+			if xmax==0.0:
+				tol = 0.1
+		if x<xmax-tol: return 0.0
+		elif x<xmax: return (x-xmax-tol)**2
 		else: return 1e10
 	#add soft constraints
 	for t in system.atom_types:
