@@ -66,7 +66,7 @@ def calculate_error(system):
 	for elements,molecules in system.molecules_by_elements.iteritems():
 		for m in molecules:
 			m.lammps_energy -= molecules[0].lammps_energy #should be in order with minimum first
-		energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
+			energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 	
 	#calculate force error
 	force_error = 0.0
@@ -77,7 +77,9 @@ def calculate_error(system):
 			#force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20)
 			force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 	
-	error = (energy_error + force_error) / len(system.atoms)
+	force_error /= len(system.atoms)
+
+	error = energy_error + force_error
 	
 	print energy_error, force_error
 	
