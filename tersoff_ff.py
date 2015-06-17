@@ -53,6 +53,65 @@ def set_lammps_parameters(system):
 			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
+	#define soft constraint functions
+	def softmin(x,xmin,tol=None):
+		if not tol:
+			tol = abs(xmin)*0.1
+			if xmin==0.0:
+				tol = 0.1
+		if x>xmin+tol: return 0.0
+		elif x>xmin: return 1e3*((xmin+tol-x)/tol)**2
+		else: return 1e10
+	def softmax(x,xmax,tol=None):
+		if not tol:
+			tol = abs(xmax)*0.1
+			if xmax==0.0:
+				tol = 0.1
+		if x<xmax-tol: return 0.0
+		elif x<xmax: return 1e3*((x-xmax-tol)/tol)**2
+		else: return 1e10
+	#add soft constraints
+	constraint_error = 0.0
+	for t in system.atom_types:
+		if hasattr(t,'vdw_e'):
+			constraint_error += softmin(t.vdw_r,0.5)
+			constraint_error += softmin(t.vdw_e,0.001)
+		if hasattr(t,'D0'):
+			constraint_error += softmin(t.D0,0.01)
+			constraint_error += softmin(t.alpha,0.5)
+			constraint_error += softmin(t.r0,0.5)
+	for t in system.bond_types:
+		constraint_error += softmin(t.e,10.0)
+		constraint_error += softmin(t.r,0.5)
+	for t in system.angle_types:
+		constraint_error += softmin(t.e,1.0)
+	for t in system.tersoff_params:
+		if t.e1=='Pb' and t.e2!='Pb' and 'O' not in [t.e2, t.e3]:
+			constraint_error += softmin(t.lambda3, 0.0)
+			constraint_error += softmin(t.c, 0.0)
+			constraint_error += softmin(t.beta, 0.0)
+			constraint_error += softmin(t.lambda2, 0.0)
+			constraint_error += softmin(t.B, 0.0)
+			constraint_error += softmin(t.lambda1, 0.0)
+			constraint_error += softmin(t.A, 0.0)
+	
+		powermint = int(t.m)
+		assert t.c >= 0.0 
+		assert t.d >= 0.0 
+		assert t.n >= 0.0 
+		assert t.beta >= 0.0 
+		assert t.lambda2 >= 0.0 
+		assert t.B >= 0.0 
+		assert t.R >= 0.0 
+		assert t.D >= 0.0 
+		assert t.D <= t.R
+		assert t.lambda1 >= 0.0 
+		assert t.A >= 0.0 
+		assert t.m - powermint == 0.0
+		assert (powermint == 3 or powermint == 1)
+		assert t.gamma >= 0.0
+	
+	#run LAMMPS
 	set_lammps_parameters(system)
 	lmp.command('run 0')
 	lammps_energies = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
@@ -82,50 +141,9 @@ def calculate_error(system):
 	
 	force_error /= len(system.atoms)
 
-	error = energy_error + force_error
+	error = energy_error + force_error + constraint_error
 	
 	print energy_error, force_error
-	
-	#define soft constraint functions
-	def softmin(x,xmin,tol=None):
-		if not tol:
-			tol = abs(xmin)*0.1
-			if xmin==0.0:
-				tol = 0.1
-		if x>xmin+tol: return 0.0
-		elif x>xmin: return 1e3*((xmin+tol-x)/tol)**2
-		else: return 1e10
-	def softmax(x,xmax,tol=None):
-		if not tol:
-			tol = abs(xmax)*0.1
-			if xmax==0.0:
-				tol = 0.1
-		if x<xmax-tol: return 0.0
-		elif x<xmax: return 1e3*((x-xmax-tol)/tol)**2
-		else: return 1e10
-	#add soft constraints
-	for t in system.atom_types:
-		if hasattr(t,'vdw_e'):
-			error += softmin(t.vdw_r,0.5)
-			error += softmin(t.vdw_e,0.001)
-		if hasattr(t,'D0'):
-			error += softmin(t.D0,0.01)
-			error += softmin(t.alpha,0.5)
-			error += softmin(t.r0,0.5)
-	for t in system.bond_types:
-		error += softmin(t.e,10.0)
-		error += softmin(t.r,0.5)
-	for t in system.angle_types:
-		error += softmin(t.e,1.0)
-	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2!='Pb':
-			error += softmin(t.lambda3, 0.0)
-			error += softmin(t.c, 0.0)
-			error += softmin(t.beta, 0.0)
-			error += softmin(t.lambda2, 0.0)
-			error += softmin(t.B, 0.0)
-			error += softmin(t.lambda1, 0.0)
-			error += softmin(t.A, 0.0)
 	
 	return error
 
@@ -142,7 +160,7 @@ def pack_params(system):
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2!='Pb':
+		if t.e1=='Pb' and t.e2!='Pb' and 'O' not in [t.e2, t.e3]:
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
 	return params
 
@@ -161,7 +179,7 @@ def unpack_params(params, system):
 		t.e = tuple(params[i:i+4])
 		i += 4
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2!='Pb':
+		if t.e1=='Pb' and t.e2!='Pb' and 'O' not in [t.e2, t.e3]:
 			num_params=10
 			t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 			i+=num_params
@@ -192,6 +210,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
+			if 'propane' in name: continue #skip propane test cases
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
