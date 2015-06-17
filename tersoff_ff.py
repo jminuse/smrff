@@ -25,9 +25,6 @@ def write_tersoff_file(system):
 		t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A
 		f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
 	f.close()
-	g = open(system.name+'.params', 'a')
-	g.write(str(pack_params(system))+'\n')
-	g.close()
 
 def set_lammps_parameters(system):
 	write_tersoff_file(system)
@@ -73,11 +70,14 @@ def calculate_error(system):
 	#add soft constraints
 	constraint_error = 0.0
 	for t in system.atom_types:
+		if hasattr(t,'charge'):
+			constraint_error += softmin(t.charge,-2.0)
+			constraint_error += softmax(t.charge,2.0)
 		if hasattr(t,'vdw_e'):
 			constraint_error += softmin(t.vdw_r,0.5)
-			constraint_error += softmin(t.vdw_e,0.001)
+			constraint_error += softmin(t.vdw_e,0.0,0.001)
 		if hasattr(t,'D0'):
-			constraint_error += softmin(t.D0,0.01)
+			constraint_error += softmin(t.D0,0.0,0.001)
 			constraint_error += softmin(t.alpha,0.5)
 			constraint_error += softmin(t.r0,0.5)
 	for t in system.bond_types:
@@ -87,7 +87,6 @@ def calculate_error(system):
 		constraint_error += softmin(t.e,1.0)
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			constraint_error += softmin(t.lambda3, 0.0)
 			constraint_error += softmin(t.c, 0.0, 1e-6)
 			constraint_error += softmin(t.beta, 0.0)
 			constraint_error += softmin(t.lambda2, 0.0)
@@ -98,7 +97,10 @@ def calculate_error(system):
 			constraint_error += softmin(t.costheta0, -1.0)
 			constraint_error += softmax(t.costheta0, 1.0)
 			
-			constraint_error += softmax(t.beta, 1e3)
+			constraint_error += softmax(t.beta, 10)
+			
+			constraint_error += softmin(t.lambda3, -10.0)
+			constraint_error += softmax(t.lambda3, 0.0)
 	
 		try:
 			powermint = int(t.m)
@@ -270,6 +272,7 @@ for line in commands:
 
 system.tersoff_params = read_tersoff_file('input.tersoff')
 
+log = open(system.name+'.params', 'a')
 def calculate_error_from_list(params):
 	unpack_params(params, system)
 	
@@ -278,10 +281,15 @@ def calculate_error_from_list(params):
 	
 	error = calculate_error(system)
 	
+	log.write('%s %f\n' % (params, error))
+	
 	return error
 
+#initial_params = pack_params(system)
+initial_params = [-0.56842137043781882, 0.1257284608264049, 2.1424793214188176, 0.58178665458910295, 0.00036857587144908927, 2.2186977209542071, -0.34383226957126006, 0.0068283285870982206, 8.4568265174463573, -1.4732468333891291, 0.12667907660098968, 3.4941444869438936, -1.2984838888232109, 0.0015976593128844831, 4.1791012975959134, -0.31411397146961578, 340.47156212905372, 2.8251613776346827, 0.28421195076148531, 42.452902902628338, 1.9905102986553431, 0.77486261841107817, 209.38425416720585, 211.38425416720585, 130.3957244915832, 1.2290000110516708, 10.999317466131302, 4.9093789941442694, 82.924891008471135, 1.335000028731461, 10.99998545251862, 2.9702765087956733, 10.994665363961488, 1.8492825837764773, 6.7225391816503466, 100.39861316681525, 2.1825101612297577, -2412.7210716312898, 1.1000000392715612, -44.893472731415173, 47.37467060560396, 123.37740995622535, 20.164733979202257, 96.048118885376667, 7.6474403751065969, 123.00978721807456, 4.790079782964666, 412.47822432777599, -219.75936931261026, -10.244711002401903, -0.96930236515644164, -0.0060753593438049886, 2.3424833838141215, 3.5137797284570569, -21.187438760405353, -0.071128207347152195, -2.0407356008266602, 1938.2315541672112, 484.11121416720675, -0.43137026339725243, 541.96069416720593, 6.9419420432794343, 498.26352416720675, 485.74773416720672, 0.099999903484189342, 0.10031138727500913]
+
 from scipy.optimize import fmin_powell
-fmin_powell(calculate_error_from_list, pack_params(system), full_output=True, ftol=0.0)
+fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
 
 
 os.chdir('..')
