@@ -26,7 +26,7 @@ def write_tersoff_file(system):
 		f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
 	f.close()
 	g = open(system.name+'.params', 'a')
-	g.write(str(pack_params(system)))
+	g.write(str(pack_params(system))+'\n')
 	g.close()
 
 def set_lammps_parameters(system):
