@@ -83,9 +83,14 @@ def calculate_error(system):
 	
 	print energy_error, force_error
 	
-	#add soft constraints
+	#define soft constraint functions
 	def softmin(x,xmin):
 		return xmin/(x-xmin) if x>xmin else 1e10
+	def softmax(x,xmax):
+		if x<xmax*0.9: return 0.0
+		if x<xmax: return (x-xmax*0.9)**2
+		else: return 1e10
+	#add soft constraints
 	for t in system.atom_types:
 		if hasattr(t,'vdw_e'):
 			error += softmin(t.vdw_r,0.5)
@@ -213,7 +218,7 @@ lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 for line in commands:
 	lmp.command(line)
 
-system.tersoff_params = read_tersoff_file('test_tersoff.tersoff')
+system.tersoff_params = read_tersoff_file('input.tersoff')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
