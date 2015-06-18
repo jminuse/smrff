@@ -75,7 +75,10 @@ def calculate_error(system):
 			constraint_error += softmax(t.charge,2.0)
 		if hasattr(t,'vdw_e'):
 			constraint_error += softmin(t.vdw_r,0.5)
+			constraint_error += softmax(t.vdw_r,6.0)
+			
 			constraint_error += softmin(t.vdw_e,0.0,0.001)
+			constraint_error += softmax(t.vdw_e,0.0,10.0)
 		if hasattr(t,'D0'):
 			constraint_error += softmin(t.D0,0.0,0.001)
 			constraint_error += softmin(t.alpha,0.5)
@@ -89,9 +92,11 @@ def calculate_error(system):
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			constraint_error += softmin(t.c, 0.0, 1e-6)
 			
-			constraint_error += softmin(t.lambda2, 0.0)
-	
-			constraint_error += softmin(t.lambda1, 0.0)
+			constraint_error += softmin(t.lambda1, 0.5, 0.5)
+			constraint_error += softmin(t.lambda1, 4.0)
+			
+			constraint_error += softmin(t.lambda2, 0.5, 0.5)
+			constraint_error += softmin(t.lambda2, 4.0)
 			
 			constraint_error += softmin(t.A, 0.0)
 			constraint_error += softmax(t.A, 100.0)
@@ -99,7 +104,7 @@ def calculate_error(system):
 			constraint_error += softmin(t.costheta0, -1.0)
 			constraint_error += softmax(t.costheta0, 1.0)
 			
-			constraint_error += softmin(t.beta, 0.0)
+			constraint_error += softmin(t.beta, 0.5)
 			constraint_error += softmax(t.beta, 10)
 			
 			constraint_error += softmin(t.lambda3, -10.0)
@@ -111,24 +116,24 @@ def calculate_error(system):
 			constraint_error += softmin(t.n, 0.0)
 			constraint_error += softmax(t.n, 4.0, 2.0)
 			
-		#try:
-		powermint = int(t.m)
-		assert t.c >= 0.0 
-		assert t.d >= 0.0 
-		assert t.n >= 0.0 
-		assert t.beta >= 0.0 
-		assert t.lambda2 >= 0.0 
-		assert t.B >= 0.0 
-		assert t.R >= 0.0 
-		assert t.D >= 0.0 
-		assert t.D <= t.R
-		assert t.lambda1 >= 0.0 
-		assert t.A >= 0.0 
-		assert t.m - powermint == 0.0
-		assert (powermint == 3 or powermint == 1)
-		assert t.gamma >= 0.0
-		#except AssertionError:
-		#	return 1e11+constraint_error+random.random()
+		try:
+			powermint = int(t.m)
+			assert t.c >= 0.0 
+			assert t.d >= 0.0 
+			assert t.n >= 0.0 
+			assert t.beta >= 0.0 
+			assert t.lambda2 >= 0.0 
+			assert t.B >= 0.0 
+			assert t.R >= 0.0 
+			assert t.D >= 0.0 
+			assert t.D <= t.R
+			assert t.lambda1 >= 0.0 
+			assert t.A >= 0.0 
+			assert t.m - powermint == 0.0
+			assert (powermint == 3 or powermint == 1)
+			assert t.gamma >= 0.0
+		except AssertionError:
+			return 1e11+constraint_error+random.random()
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
@@ -172,7 +177,8 @@ def calculate_error(system):
 def pack_params(system):
 	params = []
 	for t in system.atom_types:
-		params += [t.charge, t.vdw_e, t.vdw_r]
+		#params += [t.charge, t.vdw_e, t.vdw_r]
+		params += [t.charge] #temporarily take away Lennard-Jones
 	for t in system.bond_types:
 		params += [t.e, t.r]
 	for t in system.angle_types:
@@ -189,8 +195,10 @@ def pack_params(system):
 def unpack_params(params, system):
 	i = 0
 	for t in system.atom_types:
-		t.charge, t.vdw_e, t.vdw_r = params[i], params[i+1], params[i+2]
-		i += 3
+		#t.charge, t.vdw_e, t.vdw_r = params[i], params[i+1], params[i+2]
+		#i += 3
+		t.charge = params[i] #temporarily take away Lennard-Jones
+		i += 1
 	for t in system.bond_types:
 		t.e, t.r = params[i], params[i+1]
 		i += 2
@@ -217,8 +225,8 @@ I = 838
 extra = {
 	(H_, I_): (100.0, 2.1), 
 	(N_, H_, I_): (10.0, 180.0), 
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.4, vdw_e=1.0, vdw_r=3.0, D0=5.0, alpha=1.5, r0=2.8),
-	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.2, vdw_e=1.0, vdw_r=3.0, D0=5.0, alpha=1.5, r0=2.8),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.4, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
+	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.2, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
 	(Pb_, I_): (100.0, 2.9), 
 	(I_, Pb_, I_): (10.0, 95.0),
 	(13, 53, 54, 66): (0.0,0.0,0.0),
@@ -299,7 +307,6 @@ def calculate_error_from_list(params):
 	return error
 
 initial_params = pack_params(system)
-#initial_params = [-0.14915055789623302, 1.8908988161692688, 2.8739769286969294, 1.7999997294496199, 81.225797807921097, 83.225797807921097, -0.74808543463407684, 1984.4643688463773, 529.34399884637526, -0.41493729553315734, 587.19347884637398, 7.1527992369982387, 543.49630884637497, 530.98051884637528, 1.5249851499134941, 58.790230563094269] 
 
 from scipy.optimize import fmin_powell
 fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
