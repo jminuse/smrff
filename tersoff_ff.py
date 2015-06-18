@@ -57,7 +57,7 @@ def calculate_error(system):
 			if xmin==0.0:
 				tol = 0.1
 		if x>xmin+tol: return 0.0
-		elif x>xmin: return 1e3*((xmin+tol-x)/tol)**2
+		elif x>xmin: return 1e5*((xmin+tol-x)/tol)**2
 		else: return 1e10
 	def softmax(x,xmax,tol=None):
 		if not tol:
@@ -65,7 +65,7 @@ def calculate_error(system):
 			if xmax==0.0:
 				tol = 0.1
 		if x<xmax-tol: return 0.0
-		elif x<xmax: return 1e3*((x-xmax-tol)/tol)**2
+		elif x<xmax: return 1e5*((x-xmax-tol)/tol)**2
 		else: return 1e10
 	#add soft constraints
 	constraint_error = 0.0
@@ -88,38 +88,47 @@ def calculate_error(system):
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			constraint_error += softmin(t.c, 0.0, 1e-6)
-			constraint_error += softmin(t.beta, 0.0)
+			
 			constraint_error += softmin(t.lambda2, 0.0)
-			constraint_error += softmin(t.B, 0.0)
+	
 			constraint_error += softmin(t.lambda1, 0.0)
+			
 			constraint_error += softmin(t.A, 0.0)
+			constraint_error += softmax(t.A, 100.0)
 			
 			constraint_error += softmin(t.costheta0, -1.0)
 			constraint_error += softmax(t.costheta0, 1.0)
 			
+			constraint_error += softmin(t.beta, 0.0)
 			constraint_error += softmax(t.beta, 10)
 			
 			constraint_error += softmin(t.lambda3, -10.0)
 			constraint_error += softmax(t.lambda3, 0.0)
 	
-		try:
-			powermint = int(t.m)
-			assert t.c >= 0.0 
-			assert t.d >= 0.0 
-			assert t.n >= 0.0 
-			assert t.beta >= 0.0 
-			assert t.lambda2 >= 0.0 
-			assert t.B >= 0.0 
-			assert t.R >= 0.0 
-			assert t.D >= 0.0 
-			assert t.D <= t.R
-			assert t.lambda1 >= 0.0 
-			assert t.A >= 0.0 
-			assert t.m - powermint == 0.0
-			assert (powermint == 3 or powermint == 1)
-			assert t.gamma >= 0.0
-		except AssertionError:
-			return 1e10+constraint_error+random.random()
+			constraint_error += softmin(t.B, 0.0)
+			constraint_error += softmax(t.B, 100.0)
+			
+			constraint_error += softmin(t.n, 0.0)
+			constraint_error += softmax(t.n, 4.0, 2.0)
+			
+		#try:
+		powermint = int(t.m)
+		assert t.c >= 0.0 
+		assert t.d >= 0.0 
+		assert t.n >= 0.0 
+		assert t.beta >= 0.0 
+		assert t.lambda2 >= 0.0 
+		assert t.B >= 0.0 
+		assert t.R >= 0.0 
+		assert t.D >= 0.0 
+		assert t.D <= t.R
+		assert t.lambda1 >= 0.0 
+		assert t.A >= 0.0 
+		assert t.m - powermint == 0.0
+		assert (powermint == 3 or powermint == 1)
+		assert t.gamma >= 0.0
+		#except AssertionError:
+		#	return 1e11+constraint_error+random.random()
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
@@ -134,12 +143,13 @@ def calculate_error(system):
 		atom_count += len(m.atoms)
 	
 	#calculate energy error
-	energy_error = 0.0
+	relative_energy_error = 0.0
+	absolute_energy_error = 0.0
 	for elements,molecules in system.molecules_by_elements.iteritems():
 		for m in molecules:
 			m.lammps_energy -= molecules[0].lammps_energy #should be in order with minimum first
-			energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
-	
+			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
+			absolute_energy_error += (m.lammps_energy-m.energy)**2
 	#calculate force error
 	force_error = 0.0
 	for i,a in enumerate(system.atoms):
@@ -150,10 +160,12 @@ def calculate_error(system):
 			force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 	
 	force_error = math.sqrt( force_error/len(system.atoms) )
+	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
+	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
-	error = energy_error + force_error + constraint_error
+	error = relative_energy_error + force_error + constraint_error
 	
-	print energy_error, force_error
+	print absolute_energy_error, force_error
 	
 	return error
 
@@ -244,8 +256,9 @@ for m in system.molecules:
 #sort molecules of same type by energy, set baseline energy as zero
 for element_string, molecules in system.molecules_by_elements.iteritems():
 	molecules.sort(key=lambda m:m.energy)
+	min_energy = molecules[0].energy
 	for m in molecules:
-		m.energy -= molecules[0].energy #minimum energy = first molecule = 0.0
+		m.energy -= min_energy #minimum energy = first molecule = 0.0
 
 
 os.chdir('lammps')
@@ -285,8 +298,8 @@ def calculate_error_from_list(params):
 	
 	return error
 
-#initial_params = pack_params(system)
-initial_params = [-0.14915055789623302, 1.8908988161692688, 2.8739769286969294, 1.7999997294496199, 81.225797807921097, 83.225797807921097, -0.74808543463407684, 1984.4643688463773, 529.34399884637526, -0.41493729553315734, 587.19347884637398, 7.1527992369982387, 543.49630884637497, 530.98051884637528, 1.5249851499134941, 58.790230563094269] 
+initial_params = pack_params(system)
+#initial_params = [-0.14915055789623302, 1.8908988161692688, 2.8739769286969294, 1.7999997294496199, 81.225797807921097, 83.225797807921097, -0.74808543463407684, 1984.4643688463773, 529.34399884637526, -0.41493729553315734, 587.19347884637398, 7.1527992369982387, 543.49630884637497, 530.98051884637528, 1.5249851499134941, 58.790230563094269] 
 
 from scipy.optimize import fmin_powell
 fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
