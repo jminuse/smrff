@@ -50,29 +50,6 @@ def set_lammps_parameters(system):
 			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
-<<<<<<< HEAD
-=======
-	#define soft constraint functions
-	def softmin(x,xmin,tol=None):
-		if not tol:
-			tol = abs(xmin)*0.1
-			if xmin==0.0:
-				tol = 0.1
-		if x>xmin+tol: return 0.0
-		elif x>xmin: return 1e5*((xmin+tol-x)/tol)**2
-		else: return 1e10
-	def softmax(x,xmax,tol=None):
-		if not tol:
-			tol = abs(xmax)*0.1
-			if xmax==0.0:
-				tol = 0.1
-		if x<xmax-tol: return 0.0
-		elif x<xmax: return 1e5*((x-xmax-tol)/tol)**2
-		else: return 1e10
-	#add soft constraints
-	constraint_error = 0.0
-	
->>>>>>> e778e81350c6797a9ed0cf310220735b41619992
 	#run LAMMPS
 	set_lammps_parameters(system)
 	lmp.command('run 0')
@@ -106,7 +83,7 @@ def calculate_error(system):
 	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
-	error = absolute_energy_error + absolute_force_error
+	error = absolute_energy_error# + absolute_force_error
 	
 	#print absolute_energy_error, force_error
 	
@@ -272,20 +249,28 @@ def calculate_error_from_list(params):
 initial_params, bounds, names = pack_params(system)
 
 names = ['PbII l2', 'PbII B', 'PbII l1', 'PbII A']
-initial_params = [  3.5489373 ,  47.09117999,   0.        ,   1.12040312]
+initial_params = [75451.3773059517, 3961.5510194415, 2.6, 1.3]
 
+import numpy
 from scipy.optimize import minimize
-best_min = utils.Struct(fun=1e10,x=initial_params)
-for step in range(100):
-	initial_params = [ min(b[1],max(b[0],random.gauss(p,p*0.5))) for b,p in zip(bounds,best_min.x)]
-	#try:
-	m = minimize(calculate_error_from_list, initial_params, bounds=bounds)
-	#except: print 'Minimize failed on step %d' % step
-	log.write('---\n')
-	if m.fun < best_min.fun:
-		best_min = m
+best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
+for step in range(1):
+	#initial_params = [ min(b[1],max(b[0],random.gauss(p,p*0.2))) for b,p in zip(bounds,best_min.x)]
+	#for a in range(10000,100000,10000):
+	#	for b in range(10000,100000,10000):
+	#		for c in numpy.arange(0.4,4.0,0.4):
+	#			for d in numpy.arange(0.2,2.0,0.2):
+	#				initial_params = [a,b,c,d]
+					guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
+					#guess = utils.Struct(fun=calculate_error_from_list(initial_params), x=initial_params)
+					log.write('---\n')
+					if guess.fun < best_min.fun:
+						best_min = guess
+					#if guess.fun < 15:
+					#	print a,b,c,d, guess.fun, guess.x
 print names
-print best_min
+print best_min.x
+print 'Error: %.4g' % best_min.fun
 
 os.chdir('..')
 
