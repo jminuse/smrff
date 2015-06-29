@@ -69,6 +69,7 @@ def calculate_error(system):
 		else: return 1e10
 	#add soft constraints
 	constraint_error = 0.0
+	'''
 	for t in system.atom_types:
 		if hasattr(t,'charge'):
 			constraint_error += softmin(t.charge,-2.0)
@@ -99,7 +100,7 @@ def calculate_error(system):
 			constraint_error += softmin(t.lambda2, 4.0)
 			
 			constraint_error += softmin(t.A, 0.0)
-			constraint_error += softmax(t.A, 100.0)
+			constraint_error += softmax(t.A, 1e6)
 			
 			constraint_error += softmin(t.costheta0, -1.0)
 			constraint_error += softmax(t.costheta0, 1.0)
@@ -111,11 +112,10 @@ def calculate_error(system):
 			constraint_error += softmax(t.lambda3, 0.0)
 	
 			constraint_error += softmin(t.B, 0.0)
-			constraint_error += softmax(t.B, 100.0)
+			constraint_error += softmax(t.B, 1e6)
 			
 			constraint_error += softmin(t.n, 0.0)
 			constraint_error += softmax(t.n, 4.0, 2.0)
-			
 		try:
 			powermint = int(t.m)
 			assert t.c >= 0.0 
@@ -134,6 +134,7 @@ def calculate_error(system):
 			assert t.gamma >= 0.0
 		except AssertionError:
 			return 1e11+constraint_error+random.random()
+	'''
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
@@ -175,22 +176,32 @@ def calculate_error(system):
 	return error
 
 def pack_params(system):
-	params = []
+	params, bounds = [], []
 	for t in system.atom_types:
 		#params += [t.charge, t.vdw_e, t.vdw_r]
-		params += [t.charge] #temporarily take away Lennard-Jones
+		if t.element=='I':
+			pass #defined by Pb
+		else:
+			params += [t.charge] #temporarily take away Lennard-Jones
+			bounds += [(0.1,2)]
 	for t in system.bond_types:
 		params += [t.e, t.r]
+		bounds += [(0,100), (0.9,3.0)]
 	for t in system.angle_types:
 		params += [t.e, t.angle]
+		bounds += [(0,100), (0,180)]
 	for t in system.dihedral_types:
 		if len(t.e)==3:
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
+		bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-	return params
+			#params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
+			#bounds += [(-10,0), (0,1), (0,1e6), (-1,1), (0,4), (0,10), (0,4), (0,1e6), (0,4), (0,1e6)]
+			params += [  t.lambda2, t.B, t.lambda1, t.A]
+			bounds += [ (0,2), (0,1e6), (0,4), (0,1e6)]
+	return params, bounds
 
 def unpack_params(params, system):
 	i = 0
@@ -210,10 +221,17 @@ def unpack_params(params, system):
 		i += 4
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			num_params=10
-			t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
+			num_params=4
+			t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
+			#num_params=10
+			#t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 			i+=num_params
 
+	pb_type = [t for t in system.atom_types if t.element==82][0]
+	i_type = [t for t in system.atom_types if t.element==53][0]
+	i_type.charge = -pb_type.charge/2
+	
+	
 I_ = 66
 H_ = 54
 N_ = 53
@@ -306,11 +324,15 @@ def calculate_error_from_list(params):
 	
 	return error
 
-initial_params = pack_params(system)
+initial_params, bounds = pack_params(system)
 
-from scipy.optimize import fmin_powell
-fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
+initial_params = [random.gauss(p,0.2) for p in initial_params]
 
+#from scipy.optimize import fmin_powell
+#fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
+
+from scipy.optimize import minimize
+print minimize(calculate_error_from_list, initial_params, bounds=bounds)
 
 os.chdir('..')
 
