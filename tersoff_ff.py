@@ -50,6 +50,29 @@ def set_lammps_parameters(system):
 			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
+<<<<<<< HEAD
+=======
+	#define soft constraint functions
+	def softmin(x,xmin,tol=None):
+		if not tol:
+			tol = abs(xmin)*0.1
+			if xmin==0.0:
+				tol = 0.1
+		if x>xmin+tol: return 0.0
+		elif x>xmin: return 1e5*((xmin+tol-x)/tol)**2
+		else: return 1e10
+	def softmax(x,xmax,tol=None):
+		if not tol:
+			tol = abs(xmax)*0.1
+			if xmax==0.0:
+				tol = 0.1
+		if x<xmax-tol: return 0.0
+		elif x<xmax: return 1e5*((x-xmax-tol)/tol)**2
+		else: return 1e10
+	#add soft constraints
+	constraint_error = 0.0
+	
+>>>>>>> e778e81350c6797a9ed0cf310220735b41619992
 	#run LAMMPS
 	set_lammps_parameters(system)
 	lmp.command('run 0')
@@ -258,6 +281,7 @@ for step in range(100):
 	#try:
 	m = minimize(calculate_error_from_list, initial_params, bounds=bounds)
 	#except: print 'Minimize failed on step %d' % step
+	log.write('---\n')
 	if m.fun < best_min.fun:
 		best_min = m
 print names
