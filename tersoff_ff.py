@@ -182,7 +182,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
-			if not name.startswith('PbI+_'): continue #for PbI+ testing
+			if not name.startswith('PbI'): continue #for PbI+ testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -263,9 +263,9 @@ for step in range(1):
 	if guess.fun < best_min.fun:
 		best_min = guess
 '''
-#from scipy.optimize import fmin_powell
-#best_min = fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
 best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='Nelder-Mead')
+#best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='L-BFGS-B')
+
 print names
 print best_min.x
 print bounds
