@@ -255,19 +255,11 @@ import numpy
 from scipy.optimize import minimize
 best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 for step in range(1):
-	#initial_params = [ min(b[1],max(b[0],random.gauss(p,p*0.2))) for b,p in zip(bounds,best_min.x)]
-	#for a in range(10000,100000,10000):
-	#	for b in range(10000,100000,10000):
-	#		for c in numpy.arange(0.4,4.0,0.4):
-	#			for d in numpy.arange(0.2,2.0,0.2):
-	#				initial_params = [a,b,c,d]
-					guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
-					#guess = utils.Struct(fun=calculate_error_from_list(initial_params), x=initial_params)
-					log.write('---\n')
-					if guess.fun < best_min.fun:
-						best_min = guess
-					#if guess.fun < 15:
-					#	print a,b,c,d, guess.fun, guess.x
+	#guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
+	guess = utils.Struct(fun=calculate_error_from_list(initial_params), x=initial_params)
+	log.write('---\n')
+	if guess.fun < best_min.fun:
+		best_min = guess
 print names
 print best_min.x
 print 'Error: %.4g' % best_min.fun
