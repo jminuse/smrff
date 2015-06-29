@@ -143,7 +143,7 @@ def pack_params(system):
 			
 			names = [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(0,3), (0,0), (0,1e6), (-1,1), (0,1), (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
+			bounds += [  (0,3), (0,0), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
 			
 	return params, bounds, names
 
