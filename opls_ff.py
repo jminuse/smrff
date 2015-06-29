@@ -23,6 +23,38 @@ def set_lammps_parameters(system):
 			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
+	#soft constraint functions
+	def softmin(x,xmin,tol=None):
+		if not tol:
+			tol = abs(xmin)*0.1
+			if xmin==0.0:
+				tol = 0.1
+		if x>xmin+tol: return 0.0
+		elif x>xmin: return 1e5*((xmin+tol-x)/tol)**2
+		else: return 1e10
+		# return xmin/(x-xmin) if x>xmin else 1e10
+	
+	def softmax(x,xmax,tol=None):
+		if not tol:
+			tol = abs(xmax)*0.1
+			if xmax==0.0:
+				tol = 0.1
+		if x<xmax-tol: return 0.0
+		elif x<xmax: return 1e5*((x-xmax-tol)/tol)**2
+		else: return 1e10
+
+	# apply soft constraints
+	constraint_error = 0.0
+	for t in system.atom_types:
+		constraint_error += softmin(t.vdw_e,0.001)
+		constraint_error += softmin(t.vdw_r,0.5)
+	for t in system.bond_types:
+		constraint_error += softmin(t.e,10.0)
+		constraint_error += softmin(t.r,0.5)
+	for t in system.angle_types:
+		constraint_error += softmin(t.e,1.0)
+
+	#Run LAMMPS
 	set_lammps_parameters(system)
 	lmp.command('run 0')
 	lammps_energies = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
@@ -35,11 +67,18 @@ def calculate_error(system):
 		atom_count += len(m.atoms)
 	
 	#calculate energy error
-	energy_error = 0.0
+	relative_energy_error = 0.0
+	absolute_energy_error = 0.0
 	for elements,molecules in system.molecules_by_elements.iteritems():
 		for m in molecules:
 			m.lammps_energy -= molecules[0].lammps_energy #should be in order with minimum first
-		energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
+			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
+			absolute_energy_error += (m.lammps_energy-m.energy)**2
+	# energy_error = 0.0
+	# for elements,molecules in system.molecules_by_elements.iteritems():
+	# 	for m in molecules:
+	# 		m.lammps_energy -= molecules[0].lammps_energy #should be in order with minimum first
+	# 	energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 	
 	#calculate force error
 	force_error = 0.0
@@ -50,21 +89,13 @@ def calculate_error(system):
 			#force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20)
 			force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 	
-	error = (energy_error + force_error) / len(system.atoms)
+	force_error = math.sqrt( force_error/len(system.atoms) )
+	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
+	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
+
+	error = relative_energy_error + force_error + constraint_error
 	
-	print energy_error, force_error
-	
-	#add soft constraints
-	def softmin(x,xmin):
-		return xmin/(x-xmin) if x>xmin else 1e10
-	for t in system.atom_types:
-		error += softmin(t.vdw_e,0.001)
-		error += softmin(t.vdw_r,0.5)
-	for t in system.bond_types:
-		error += softmin(t.e,10.0)
-		error += softmin(t.r,0.5)
-	for t in system.angle_types:
-		error += softmin(t.e,1.0)
+	print absolute_energy_error, force_error
 	
 	return error
 
@@ -116,13 +147,14 @@ extra = {
 	(54, 53, 54, 66): (0.0,0.0,0.0),
 }
 
-system = utils.System(box_size=[1e3, 1e3, 1e3], name='test3')
+system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_opls_0')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
+			if not name.startswith('PbI2'): continue #for PbI2 testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -135,7 +167,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			system.add(total, count*200.0)
 			count += 1
 
-system.box_size[0] = count*200+200 #make system big enough to hold all atoms
+system.box_size[0] = count*400+200 #make system big enough to hold all atoms
 
 #group molecules by .element_string
 system.molecules_by_elements = {}
@@ -180,10 +212,11 @@ def calculate_error_from_list(params):
 
 	return error
 
-from scipy.optimize import minimize
+# from scipy.optimize import minimize
 #minimize(calculate_error_from_list, pack_params(system), method='Nelder-Mead', options={'disp':True,'maxfev':1000000,'maxiter':1000000})
-minimize(calculate_error_from_list, pack_params(system), method='Powell', options={'disp':True,'maxfev':1000000}) #seems to work better, at least for small number of parameters
-
+#minimize(calculate_error_from_list, pack_params(system), method='Powell', options={'disp':True,'maxfev':1000000}) #seems to work better, at least for small number of parameters
+from scipy.optimize import fmin_powell
+fmin_powell(calculate_error_from_list, pack_params(system), full_output=True, ftol=0.0)
 
 os.chdir('..')
 
