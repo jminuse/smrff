@@ -178,11 +178,11 @@ def calculate_error(system):
 def pack_params(system):
 	params, bounds, names = [], [], []
 	for t in system.atom_types:
-		#params += [t.charge, t.vdw_e, t.vdw_r]
+		#params += [t.charge, t.vdw_e, t.vdw_r] #temporarily take away Lennard-Jones
 		if t.element==53:
 			pass #defined by Pb
 		else:
-			params += [t.charge] #temporarily take away Lennard-Jones
+			params += [t.charge]
 			bounds += [(0.0,2)]
 			names += ['%d charge'%t.element]
 	for t in system.bond_types:
@@ -209,12 +209,12 @@ def pack_params(system):
 def unpack_params(params, system):
 	i = 0
 	for t in system.atom_types:
-		#t.charge, t.vdw_e, t.vdw_r = params[i], params[i+1], params[i+2]
+		#t.charge, t.vdw_e, t.vdw_r = params[i], params[i+1], params[i+2] #temporarily take away Lennard-Jones
 		#i += 3
 		if t.element==53:
 			pass #defined by Pb
 		else:
-			t.charge = params[i] #temporarily take away Lennard-Jones
+			t.charge = params[i]
 			i += 1
 	for t in system.bond_types:
 		t.e, t.r = params[i], params[i+1]
@@ -264,9 +264,9 @@ for root, dirs, file_list in os.walk("gaussian"):
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
-			if not name.startswith('PbI2'): continue #for PbI2 testing
+			if not name.startswith('PbI+'): continue #for PbI+ testing
 			energy, atoms = g09.parse_atoms(name)
-			total = utils.Molecule('gaussian/'+name, extra_parameters=extra)
+			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
 			print total.element_string
@@ -332,15 +332,15 @@ def calculate_error_from_list(params):
 
 initial_params, bounds, names = pack_params(system)
 
-initial_params = [  7.15053978e-02,   1.75283692e+00,   4.14210559e+00, 1.93411217e+00,   3.17873858e+02]
+#initial_params = [  7.15053978e-02,   1.75283692e+00,   4.14210559e+00, 1.93411217e+00,   3.17873858e+02]
 
 from scipy.optimize import minimize
 best_min = utils.Struct(fun=1e10,x=initial_params)
 for step in range(100):
 	initial_params = [ min(b[1],max(b[0],random.gauss(p,p*0.5))) for b,p in zip(bounds,best_min.x)]
-	try:
-		m = minimize(calculate_error_from_list, initial_params, bounds=bounds)
-	except: print 'Minimize failed on step %d' % step
+	#try:
+	m = minimize(calculate_error_from_list, initial_params, bounds=bounds)
+	#except: print 'Minimize failed on step %d' % step
 	if m.fun < best_min.fun:
 		best_min = m
 print names
