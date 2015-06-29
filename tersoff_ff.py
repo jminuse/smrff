@@ -50,6 +50,27 @@ def set_lammps_parameters(system):
 			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
+	for t in system.tersoff_params:
+		try:
+			powermint = int(t.m)
+			assert t.c >= 0.0
+			assert t.d >= 0.0
+			assert t.n >= 0.0
+			assert t.beta >= 0.0
+			assert t.lambda2 >= 0.0
+			assert t.B >= 0.0
+			assert t.R >= 0.0
+			assert t.D >= 0.0
+			assert t.D <= t.R
+			assert t.lambda1 >= 0.0
+			assert t.A >= 0.0
+			assert t.m - powermint == 0.0
+			assert (powermint == 3 or powermint == 1)
+			assert t.gamma >= 0.0
+		except AssertionError:
+			print 'Bad Tersoff parameters'
+			return 1e10
+	
 	#run LAMMPS
 	set_lammps_parameters(system)
 	lmp.command('run 0')
@@ -115,12 +136,15 @@ def pack_params(system):
 		bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			#params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			#bounds += [(-10,0), (0,1), (0,1e6), (-1,1), (0,4), (0,10), (0,4), (0,1e6), (0,4), (0,1e6)]
-			params += [ t.A, t.B, t.lambda1, t.lambda2 ]
-			bounds += [ (0,1e6), (0,1e6), (0,6), (0,3)]
 			s = t.e1+t.e2+t.e3
-			names += [s+' A', s+' B', s+' l1', s+' l2']
+			#names += [s+' A', s+' B', s+' l1', s+' l2']
+			#params += [ t.A, t.B, t.lambda1, t.lambda2 ]
+			#bounds += [ (0,1e6), (0,1e6), (0,6), (0,3)]
+			
+			names = [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
+			params += [t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
+			bounds += [(0,3), (0,0), (0,1e6), (-1,1), (0,1), (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
+			
 	return params, bounds, names
 
 def unpack_params(params, system):
@@ -145,10 +169,10 @@ def unpack_params(params, system):
 		i += 4
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			num_params=4
-			t.A, t.B, t.lambda1, t.lambda2 = params[i:i+num_params]
-			#num_params=10
-			#t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
+			#num_params=4
+			#t.A, t.B, t.lambda1, t.lambda2 = params[i:i+num_params]
+			num_params=9
+			t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 			i+=num_params
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
@@ -182,7 +206,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
-			if not name.startswith('PbI'): continue #for PbI+ testing
+			if not name.startswith('PbI+') and not name.startswith('PbI2_r'): continue #for PbI+ testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -249,25 +273,37 @@ def calculate_error_from_list(params):
 
 initial_params, bounds, names = pack_params(system)
 
-['PbII A', 'PbII B', 'PbII l1', 'PbII l2']
-initial_params = [  4.39901646e+04,   1.76466238e+04,   2.13715665e+00,   1.42221629e+00]
+['PbIIlambda3', 'PbIIc', 'PbIId', 'PbIIcostheta0', 'PbIIn', 'PbIIbeta', 'PbIIlambda2', 'PbIIB', 'PbIIlambda1', 'PbIIA']
+#initial_params = [-4.0, 10000.0, 2.0, 0.0, 1e-06, 1.4222163, 17646.624, 2.1371567, 43990.165]
 
 import numpy
 from scipy.optimize import minimize
-'''
-best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-for step in range(1):
-	guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
-	#guess = utils.Struct(fun=calculate_error_from_list(best_min.x), x=best_min.x)
-	log.write('---\n')
-	if guess.fun < best_min.fun:
-		best_min = guess
-'''
-best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='Nelder-Mead')
+
+def randomize(N):
+	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
+	for step in range(N):
+		params = []
+		for p,b in zip(best_min.x, bounds):
+			new = random.gauss(p,p*0.2)
+			if new < b[0]:
+				new += (b[0]-new)
+			if new > b[1]:
+				new -= (b[1]-new)
+			params.append( new )
+		guess = minimize(calculate_error_from_list, params, bounds=bounds, method='L-BFGS-B')
+		#guess = utils.Struct(fun=calculate_error_from_list(best_min.x), x=best_min.x)
+		log.write('---\n')
+		if guess.fun < best_min.fun:
+			best_min = guess
+	return best_min
+
+#best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='Nelder-Mead')
 #best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='L-BFGS-B')
 
+best_min = randomize(100)
+
 print names
-print best_min.x
+print list(best_min.x)
 print bounds
 print 'Error: %.4g' % best_min.fun
 
