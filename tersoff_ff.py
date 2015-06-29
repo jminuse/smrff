@@ -65,10 +65,12 @@ def calculate_error(system):
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	for elements,molecules in system.molecules_by_elements.iteritems():
+		baseline_energy = molecules[-1].lammps_energy #TODO: should be in order with minimum first
 		for m in molecules:
-			m.lammps_energy -= molecules[0].lammps_energy #should be in order with minimum first
+			m.lammps_energy -= baseline_energy
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
+			print m.energy, m.lammps_energy
 	#calculate force error
 	relative_force_error, absolute_force_error = 0.0, 0.0
 	for i,a in enumerate(system.atoms):
@@ -118,7 +120,7 @@ def pack_params(system):
 			params += [ t.A, t.B, t.lambda1, t.lambda2 ]
 			bounds += [ (0,1e6), (0,1e6), (0,6), (0,3)]
 			s = t.e1+t.e2+t.e3
-			names += [s+' l2', s+' B', s+' l1', s+' A']
+			names += [s+' A', s+' B', s+' l1', s+' l2']
 	return params, bounds, names
 
 def unpack_params(params, system):
@@ -177,15 +179,17 @@ system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
-	for ff in file_list:
-		if ff.endswith('.log'):
-			name = ff[:-4]
-			if not name.startswith('PbI+'): continue #for PbI+ testing
+	#for ff in file_list:
+	#	if ff.endswith('.log'):
+	#		name = ff[:-4]
+	for step in range(20):
+			name = 'PbI+_r%d' % step
+			if not name.startswith('PbI+_r'): continue #for PbI+ testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
-			print total.element_string
+			#print total.element_string
 			for i,a in enumerate(total.atoms):
 				b = atoms[i]
 				a.x, a.y, a.z = b.x, b.y, b.z
@@ -203,8 +207,9 @@ for m in system.molecules:
 	system.molecules_by_elements[ m.element_string ].append(m)
 #sort molecules of same type by energy, set baseline energy as zero
 for element_string, molecules in system.molecules_by_elements.iteritems():
-	molecules.sort(key=lambda m:m.energy)
-	min_energy = molecules[0].energy
+	#molecules.sort(key=lambda m:m.energy)
+	#min_energy = molecules[0].energy
+	min_energy = molecules[-1].energy #TODO: change this back!
 	for m in molecules:
 		m.energy -= min_energy #minimum energy = first molecule = 0.0
 
@@ -248,20 +253,23 @@ def calculate_error_from_list(params):
 
 initial_params, bounds, names = pack_params(system)
 
-names = ['PbII l2', 'PbII B', 'PbII l1', 'PbII A']
-initial_params = [75451.3773059517, 3961.5510194415, 2.6, 1.3]
+['PbII A', 'PbII B', 'PbII l1', 'PbII l2']
+initial_params = [75451.3773059517, 3961.5510194415*2, 2.6, 1.3]
 
 import numpy
 from scipy.optimize import minimize
 best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
+'''
 for step in range(1):
-	#guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
-	guess = utils.Struct(fun=calculate_error_from_list(initial_params), x=initial_params)
+	guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
+	#guess = utils.Struct(fun=calculate_error_from_list(best_min.x), x=best_min.x)
 	log.write('---\n')
 	if guess.fun < best_min.fun:
 		best_min = guess
+'''
 print names
 print best_min.x
+print bounds
 print 'Error: %.4g' % best_min.fun
 
 os.chdir('..')
