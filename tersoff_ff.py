@@ -76,9 +76,9 @@ def calculate_error(system):
 	for i,a in enumerate(system.atoms):
 		fx, fy, fz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 		real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
-		if real_force_squared < 20.0**2:
-			relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
-			absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
+		#if real_force_squared < 20.0**2:
+		relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
+		absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 	
 	relative_force_error = math.sqrt( relative_force_error/len(system.atoms) )
 	absolute_force_error = math.sqrt( absolute_force_error/len(system.atoms) )
@@ -87,7 +87,7 @@ def calculate_error(system):
 
 	error = relative_energy_error + relative_force_error
 	
-	print absolute_energy_error, absolute_force_error
+	print absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
 	
 	return error
 
@@ -179,12 +179,10 @@ system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
-	#for ff in file_list:
-	#	if ff.endswith('.log'):
-	#		name = ff[:-4]
-	for step in range(20):
-			name = 'PbI+_r%d' % step
-			if not name.startswith('PbI+_r'): continue #for PbI+ testing
+	for ff in file_list:
+		if ff.endswith('.log'):
+			name = ff[:-4]
+			if not name.startswith('PbI+_'): continue #for PbI+ testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -211,7 +209,6 @@ for element_string, molecules in system.molecules_by_elements.iteritems():
 	min_energy = molecules[0].energy
 	for m in molecules:
 		m.energy -= min_energy #minimum energy = first molecule = 0.0
-
 
 os.chdir('lammps')
 files.write_lammps_data(system)
@@ -253,7 +250,7 @@ def calculate_error_from_list(params):
 initial_params, bounds, names = pack_params(system)
 
 ['PbII A', 'PbII B', 'PbII l1', 'PbII l2']
-initial_params = [  5.43714729e+04,   2.20017521e+04,   2.20605390e+00,   1.49801678e+00]
+initial_params = [  4.39901646e+04,   1.76466238e+04,   2.13715665e+00,   1.42221629e+00]
 
 import numpy
 from scipy.optimize import minimize
