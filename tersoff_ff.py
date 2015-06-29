@@ -50,92 +50,6 @@ def set_lammps_parameters(system):
 			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
-	#define soft constraint functions
-	def softmin(x,xmin,tol=None):
-		if not tol:
-			tol = abs(xmin)*0.1
-			if xmin==0.0:
-				tol = 0.1
-		if x>xmin+tol: return 0.0
-		elif x>xmin: return 1e5*((xmin+tol-x)/tol)**2
-		else: return 1e10
-	def softmax(x,xmax,tol=None):
-		if not tol:
-			tol = abs(xmax)*0.1
-			if xmax==0.0:
-				tol = 0.1
-		if x<xmax-tol: return 0.0
-		elif x<xmax: return 1e5*((x-xmax-tol)/tol)**2
-		else: return 1e10
-	#add soft constraints
-	constraint_error = 0.0
-	'''
-	for t in system.atom_types:
-		if hasattr(t,'charge'):
-			constraint_error += softmin(t.charge,-2.0)
-			constraint_error += softmax(t.charge,2.0)
-		if hasattr(t,'vdw_e'):
-			constraint_error += softmin(t.vdw_r,0.5)
-			constraint_error += softmax(t.vdw_r,6.0)
-			
-			constraint_error += softmin(t.vdw_e,0.0,0.001)
-			constraint_error += softmax(t.vdw_e,0.0,10.0)
-		if hasattr(t,'D0'):
-			constraint_error += softmin(t.D0,0.0,0.001)
-			constraint_error += softmin(t.alpha,0.5)
-			constraint_error += softmin(t.r0,0.5)
-	for t in system.bond_types:
-		constraint_error += softmin(t.e,10.0)
-		constraint_error += softmin(t.r,0.5)
-	for t in system.angle_types:
-		constraint_error += softmin(t.e,1.0)
-	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			constraint_error += softmin(t.c, 0.0, 1e-6)
-			
-			constraint_error += softmin(t.lambda1, 0.5, 0.5)
-			constraint_error += softmin(t.lambda1, 4.0)
-			
-			constraint_error += softmin(t.lambda2, 0.5, 0.5)
-			constraint_error += softmin(t.lambda2, 4.0)
-			
-			constraint_error += softmin(t.A, 0.0)
-			constraint_error += softmax(t.A, 1e6)
-			
-			constraint_error += softmin(t.costheta0, -1.0)
-			constraint_error += softmax(t.costheta0, 1.0)
-			
-			constraint_error += softmin(t.beta, 0.5)
-			constraint_error += softmax(t.beta, 10)
-			
-			constraint_error += softmin(t.lambda3, -10.0)
-			constraint_error += softmax(t.lambda3, 0.0)
-	
-			constraint_error += softmin(t.B, 0.0)
-			constraint_error += softmax(t.B, 1e6)
-			
-			constraint_error += softmin(t.n, 0.0)
-			constraint_error += softmax(t.n, 4.0, 2.0)
-		try:
-			powermint = int(t.m)
-			assert t.c >= 0.0 
-			assert t.d >= 0.0 
-			assert t.n >= 0.0 
-			assert t.beta >= 0.0 
-			assert t.lambda2 >= 0.0 
-			assert t.B >= 0.0 
-			assert t.R >= 0.0 
-			assert t.D >= 0.0 
-			assert t.D <= t.R
-			assert t.lambda1 >= 0.0 
-			assert t.A >= 0.0 
-			assert t.m - powermint == 0.0
-			assert (powermint == 3 or powermint == 1)
-			assert t.gamma >= 0.0
-		except AssertionError:
-			return 1e11+constraint_error+random.random()
-	'''
-	
 	#run LAMMPS
 	set_lammps_parameters(system)
 	lmp.command('run 0')
@@ -169,7 +83,7 @@ def calculate_error(system):
 	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
-	error = absolute_energy_error + absolute_force_error + constraint_error
+	error = absolute_energy_error + absolute_force_error
 	
 	#print absolute_energy_error, force_error
 	
@@ -179,12 +93,13 @@ def pack_params(system):
 	params, bounds, names = [], [], []
 	for t in system.atom_types:
 		#params += [t.charge, t.vdw_e, t.vdw_r] #temporarily take away Lennard-Jones
-		if t.element==53:
-			pass #defined by Pb
-		else:
-			params += [t.charge]
-			bounds += [(0.0,2)]
-			names += ['%d charge'%t.element]
+		#if t.element==53:
+		#	pass #defined by Pb
+		#else:
+		#	params += [t.charge]
+		#	bounds += [(0.0,2)]
+		#	names += ['%d charge'%t.element]
+		pass
 	for t in system.bond_types:
 		params += [t.e, t.r]
 		bounds += [(0,100), (0.9,3.0)]
@@ -200,8 +115,8 @@ def pack_params(system):
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			#params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
 			#bounds += [(-10,0), (0,1), (0,1e6), (-1,1), (0,4), (0,10), (0,4), (0,1e6), (0,4), (0,1e6)]
-			params += [  t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [ (0,1.5), (0,1e6), (0,4), (0,1e6)]
+			params += [ t.A, t.B, t.lambda1, t.lambda2 ]
+			bounds += [ (0,1e6), (0,1e6), (0,6), (0,3)]
 			s = t.e1+t.e2+t.e3
 			names += [s+' l2', s+' B', s+' l1', s+' A']
 	return params, bounds, names
@@ -211,11 +126,12 @@ def unpack_params(params, system):
 	for t in system.atom_types:
 		#t.charge, t.vdw_e, t.vdw_r = params[i], params[i+1], params[i+2] #temporarily take away Lennard-Jones
 		#i += 3
-		if t.element==53:
-			pass #defined by Pb
-		else:
-			t.charge = params[i]
-			i += 1
+		#if t.element==53:
+		#	pass #defined by Pb
+		#else:
+		#	t.charge = params[i]
+		#	i += 1
+		pass
 	for t in system.bond_types:
 		t.e, t.r = params[i], params[i+1]
 		i += 2
@@ -228,7 +144,7 @@ def unpack_params(params, system):
 	for t in system.tersoff_params:
 		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
 			num_params=4
-			t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
+			t.A, t.B, t.lambda1, t.lambda2 = params[i:i+num_params]
 			#num_params=10
 			#t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 			i+=num_params
@@ -249,7 +165,7 @@ I = 838
 extra = {
 	(H_, I_): (100.0, 2.1), 
 	(N_, H_, I_): (10.0, 180.0), 
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.4, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.2, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
 	(Pb_, I_): (100.0, 2.9), 
 	(I_, Pb_, I_): (10.0, 95.0),
@@ -332,7 +248,8 @@ def calculate_error_from_list(params):
 
 initial_params, bounds, names = pack_params(system)
 
-#initial_params = [  7.15053978e-02,   1.75283692e+00,   4.14210559e+00, 1.93411217e+00,   3.17873858e+02]
+names = ['PbII l2', 'PbII B', 'PbII l1', 'PbII A']
+initial_params = [  3.5489373 ,  47.09117999,   0.        ,   1.12040312]
 
 from scipy.optimize import minimize
 best_min = utils.Struct(fun=1e10,x=initial_params)
