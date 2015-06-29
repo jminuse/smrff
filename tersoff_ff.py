@@ -149,41 +149,42 @@ def calculate_error(system):
 		atom_count += len(m.atoms)
 	
 	#calculate energy error
-	relative_energy_error = 0.0
-	absolute_energy_error = 0.0
+	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	for elements,molecules in system.molecules_by_elements.iteritems():
 		for m in molecules:
 			m.lammps_energy -= molecules[0].lammps_energy #should be in order with minimum first
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
 	#calculate force error
-	force_error = 0.0
+	relative_force_error, absolute_force_error = 0.0, 0.0
 	for i,a in enumerate(system.atoms):
 		fx, fy, fz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 		real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
 		if real_force_squared < 20.0**2:
-			#force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20)
-			force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
+			relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20)
+			absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 	
-	force_error = math.sqrt( force_error/len(system.atoms) )
+	relative_force_error = math.sqrt( relative_force_error/len(system.atoms) )
+	absolute_force_error = math.sqrt( absolute_force_error/len(system.atoms) )
 	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
-	error = relative_energy_error + force_error + constraint_error
+	error = absolute_energy_error + absolute_force_error + constraint_error
 	
-	print absolute_energy_error, force_error
+	#print absolute_energy_error, force_error
 	
 	return error
 
 def pack_params(system):
-	params, bounds = [], []
+	params, bounds, names = [], [], []
 	for t in system.atom_types:
 		#params += [t.charge, t.vdw_e, t.vdw_r]
-		if t.element=='I':
+		if t.element==53:
 			pass #defined by Pb
 		else:
 			params += [t.charge] #temporarily take away Lennard-Jones
-			bounds += [(0.1,2)]
+			bounds += [(0.0,2)]
+			names += ['%d charge'%t.element]
 	for t in system.bond_types:
 		params += [t.e, t.r]
 		bounds += [(0,100), (0.9,3.0)]
@@ -200,16 +201,21 @@ def pack_params(system):
 			#params += [t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.lambda1, t.A]
 			#bounds += [(-10,0), (0,1), (0,1e6), (-1,1), (0,4), (0,10), (0,4), (0,1e6), (0,4), (0,1e6)]
 			params += [  t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [ (0,2), (0,1e6), (0,4), (0,1e6)]
-	return params, bounds
+			bounds += [ (0,1.5), (0,1e6), (0,4), (0,1e6)]
+			s = t.e1+t.e2+t.e3
+			names += [s+' l2', s+' B', s+' l1', s+' A']
+	return params, bounds, names
 
 def unpack_params(params, system):
 	i = 0
 	for t in system.atom_types:
 		#t.charge, t.vdw_e, t.vdw_r = params[i], params[i+1], params[i+2]
 		#i += 3
-		t.charge = params[i] #temporarily take away Lennard-Jones
-		i += 1
+		if t.element==53:
+			pass #defined by Pb
+		else:
+			t.charge = params[i] #temporarily take away Lennard-Jones
+			i += 1
 	for t in system.bond_types:
 		t.e, t.r = params[i], params[i+1]
 		i += 2
@@ -324,15 +330,21 @@ def calculate_error_from_list(params):
 	
 	return error
 
-initial_params, bounds = pack_params(system)
+initial_params, bounds, names = pack_params(system)
 
-initial_params = [random.gauss(p,0.2) for p in initial_params]
-
-#from scipy.optimize import fmin_powell
-#fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
+initial_params = [  7.15053978e-02,   1.75283692e+00,   4.14210559e+00, 1.93411217e+00,   3.17873858e+02]
 
 from scipy.optimize import minimize
-print minimize(calculate_error_from_list, initial_params, bounds=bounds)
+best_min = utils.Struct(fun=1e10,x=initial_params)
+for step in range(100):
+	initial_params = [ min(b[1],max(b[0],random.gauss(p,p*0.5))) for b,p in zip(bounds,best_min.x)]
+	try:
+		m = minimize(calculate_error_from_list, initial_params, bounds=bounds)
+	except: print 'Minimize failed on step %d' % step
+	if m.fun < best_min.fun:
+		best_min = m
+print names
+print best_min
 
 os.chdir('..')
 
