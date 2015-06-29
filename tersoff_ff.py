@@ -69,72 +69,6 @@ def calculate_error(system):
 		else: return 1e10
 	#add soft constraints
 	constraint_error = 0.0
-	'''
-	for t in system.atom_types:
-		if hasattr(t,'charge'):
-			constraint_error += softmin(t.charge,-2.0)
-			constraint_error += softmax(t.charge,2.0)
-		if hasattr(t,'vdw_e'):
-			constraint_error += softmin(t.vdw_r,0.5)
-			constraint_error += softmax(t.vdw_r,6.0)
-			
-			constraint_error += softmin(t.vdw_e,0.0,0.001)
-			constraint_error += softmax(t.vdw_e,0.0,10.0)
-		if hasattr(t,'D0'):
-			constraint_error += softmin(t.D0,0.0,0.001)
-			constraint_error += softmin(t.alpha,0.5)
-			constraint_error += softmin(t.r0,0.5)
-	for t in system.bond_types:
-		constraint_error += softmin(t.e,10.0)
-		constraint_error += softmin(t.r,0.5)
-	for t in system.angle_types:
-		constraint_error += softmin(t.e,1.0)
-	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			constraint_error += softmin(t.c, 0.0, 1e-6)
-			
-			constraint_error += softmin(t.lambda1, 0.5, 0.5)
-			constraint_error += softmin(t.lambda1, 4.0)
-			
-			constraint_error += softmin(t.lambda2, 0.5, 0.5)
-			constraint_error += softmin(t.lambda2, 4.0)
-			
-			constraint_error += softmin(t.A, 0.0)
-			constraint_error += softmax(t.A, 1e6)
-			
-			constraint_error += softmin(t.costheta0, -1.0)
-			constraint_error += softmax(t.costheta0, 1.0)
-			
-			constraint_error += softmin(t.beta, 0.5)
-			constraint_error += softmax(t.beta, 10)
-			
-			constraint_error += softmin(t.lambda3, -10.0)
-			constraint_error += softmax(t.lambda3, 0.0)
-	
-			constraint_error += softmin(t.B, 0.0)
-			constraint_error += softmax(t.B, 1e6)
-			
-			constraint_error += softmin(t.n, 0.0)
-			constraint_error += softmax(t.n, 4.0, 2.0)
-		try:
-			powermint = int(t.m)
-			assert t.c >= 0.0 
-			assert t.d >= 0.0 
-			assert t.n >= 0.0 
-			assert t.beta >= 0.0 
-			assert t.lambda2 >= 0.0 
-			assert t.B >= 0.0 
-			assert t.R >= 0.0 
-			assert t.D >= 0.0 
-			assert t.D <= t.R
-			assert t.lambda1 >= 0.0 
-			assert t.A >= 0.0 
-			assert t.m - powermint == 0.0
-			assert (powermint == 3 or powermint == 1)
-			assert t.gamma >= 0.0
-		except AssertionError:
-			return 1e11+constraint_error+random.random()
-	'''
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
@@ -341,6 +275,7 @@ for step in range(100):
 	#try:
 	m = minimize(calculate_error_from_list, initial_params, bounds=bounds)
 	#except: print 'Minimize failed on step %d' % step
+	log.write('---\n')
 	if m.fun < best_min.fun:
 		best_min = m
 print names
