@@ -65,19 +65,19 @@ def calculate_error(system):
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	for elements,molecules in system.molecules_by_elements.iteritems():
-		baseline_energy = molecules[-1].lammps_energy #TODO: should be in order with minimum first
+		baseline_energy = molecules[0].lammps_energy #should be in order of increasing energy
 		for m in molecules:
 			m.lammps_energy -= baseline_energy
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
-			print m.energy, m.lammps_energy
+			#print m.energy, m.lammps_energy
 	#calculate force error
 	relative_force_error, absolute_force_error = 0.0, 0.0
 	for i,a in enumerate(system.atoms):
 		fx, fy, fz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 		real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
 		if real_force_squared < 20.0**2:
-			relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20)
+			relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
 			absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 	
 	relative_force_error = math.sqrt( relative_force_error/len(system.atoms) )
@@ -85,9 +85,9 @@ def calculate_error(system):
 	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
-	error = absolute_energy_error# + absolute_force_error
+	error = relative_energy_error + relative_force_error
 	
-	#print absolute_energy_error, force_error
+	print absolute_energy_error, absolute_force_error
 	
 	return error
 
@@ -207,9 +207,8 @@ for m in system.molecules:
 	system.molecules_by_elements[ m.element_string ].append(m)
 #sort molecules of same type by energy, set baseline energy as zero
 for element_string, molecules in system.molecules_by_elements.iteritems():
-	#molecules.sort(key=lambda m:m.energy)
-	#min_energy = molecules[0].energy
-	min_energy = molecules[-1].energy #TODO: change this back!
+	molecules.sort(key=lambda m:m.energy)
+	min_energy = molecules[0].energy
 	for m in molecules:
 		m.energy -= min_energy #minimum energy = first molecule = 0.0
 
@@ -254,12 +253,12 @@ def calculate_error_from_list(params):
 initial_params, bounds, names = pack_params(system)
 
 ['PbII A', 'PbII B', 'PbII l1', 'PbII l2']
-initial_params = [75451.3773059517, 3961.5510194415*2, 2.6, 1.3]
+initial_params = [  5.43714729e+04,   2.20017521e+04,   2.20605390e+00,   1.49801678e+00]
 
 import numpy
 from scipy.optimize import minimize
-best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 '''
+best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 for step in range(1):
 	guess = minimize(calculate_error_from_list, initial_params, bounds=bounds)
 	#guess = utils.Struct(fun=calculate_error_from_list(best_min.x), x=best_min.x)
@@ -267,6 +266,9 @@ for step in range(1):
 	if guess.fun < best_min.fun:
 		best_min = guess
 '''
+#from scipy.optimize import fmin_powell
+#best_min = fmin_powell(calculate_error_from_list, initial_params, full_output=True, ftol=0.0)
+best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='Nelder-Mead')
 print names
 print best_min.x
 print bounds
