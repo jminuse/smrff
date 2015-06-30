@@ -21,9 +21,14 @@ def read_tersoff_file(filename):
 
 def write_tersoff_file(system):
 	f = open(system.name+'.tersoff', 'w')
-	for t in system.tersoff_params:
-		t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A
-		f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
+	pb_i_i = [t for t in system.tersoff_params if (t.e1,t.e2,t.e3)==('Pb','I','I')][0]
+	for i,t in enumerate(system.tersoff_params):
+		if (t.e1,t.e2,t.e3)==('I','Pb','Pb'):
+			n = t
+			t = pb_i_i
+			f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (n.e1, n.e2, n.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
+		else:
+			f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
 	f.close()
 
 def set_lammps_parameters(system):
@@ -92,6 +97,7 @@ def calculate_error(system):
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
 			#print m.energy, m.lammps_energy
+	#exit()
 	#calculate force error
 	relative_force_error, absolute_force_error = 0.0, 0.0
 	for i,a in enumerate(system.atoms):
@@ -108,7 +114,7 @@ def calculate_error(system):
 
 	error = relative_energy_error + relative_force_error
 	
-	print absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
+	#print absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
 	
 	return error
 
@@ -143,7 +149,7 @@ def pack_params(system):
 			
 			names = [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [  (0,3), (0,0), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
+			bounds += [  (0,3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
 			
 	return params, bounds, names
 
@@ -206,7 +212,9 @@ for root, dirs, file_list in os.walk("gaussian"):
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
-			if not name.startswith('PbI+') and not name.startswith('PbI2_r'): continue #for PbI+ testing
+	#for step in range(20):
+	#		name = 'PbI2_r%d' % step
+			if not name.startswith('PbI'): continue #for PbI testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -230,9 +238,9 @@ for m in system.molecules:
 #sort molecules of same type by energy, set baseline energy as zero
 for element_string, molecules in system.molecules_by_elements.iteritems():
 	molecules.sort(key=lambda m:m.energy)
-	min_energy = molecules[0].energy
+	baseline_energy = molecules[0].energy
 	for m in molecules:
-		m.energy -= min_energy #minimum energy = first molecule = 0.0
+		m.energy -= baseline_energy #baseline energy = 0.0
 
 os.chdir('lammps')
 files.write_lammps_data(system)
@@ -274,17 +282,18 @@ def calculate_error_from_list(params):
 initial_params, bounds, names = pack_params(system)
 
 ['PbIIlambda3', 'PbIIc', 'PbIId', 'PbIIcostheta0', 'PbIIn', 'PbIIbeta', 'PbIIlambda2', 'PbIIB', 'PbIIlambda1', 'PbIIA']
-#initial_params = [-4.0, 10000.0, 2.0, 0.0, 1e-06, 1.4222163, 17646.624, 2.1371567, 43990.165]
+initial_params = [1.0844974213798946, 0.0, 1.0827448710847265, 0.0, 0.87335114727974794, 1.6236373956404182, 8796.8577194349473, 2.3376314006404924, 45487.849488957079]
 
 import numpy
 from scipy.optimize import minimize
 
-def randomize(N):
+def randomize():
 	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-	for step in range(N):
+	print 'Error: %.4g' % best_min.fun
+	while True:
 		params = []
 		for p,b in zip(best_min.x, bounds):
-			new = random.gauss(p,p*0.2)
+			new = random.gauss(p, p*0.2 if p!=0.0 else 0.001)
 			if new < b[0]:
 				new += (b[0]-new)
 			if new > b[1]:
@@ -295,12 +304,14 @@ def randomize(N):
 		log.write('---\n')
 		if guess.fun < best_min.fun:
 			best_min = guess
+			print list(best_min.x)
+			print 'Error: %.4g' % best_min.fun
 	return best_min
 
 #best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='Nelder-Mead')
 #best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='L-BFGS-B')
 
-best_min = randomize(100)
+best_min = randomize()
 
 print names
 print list(best_min.x)
