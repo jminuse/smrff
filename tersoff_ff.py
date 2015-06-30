@@ -149,7 +149,7 @@ def pack_params(system):
 			
 			names = [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [  (0,3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
+			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)] #c = 0.0
 			
 	return params, bounds, names
 
@@ -205,7 +205,7 @@ extra = {
 	(54, 53, 54, 66): (0.0,0.0,0.0),
 }
 
-system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
+system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff_')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -282,7 +282,8 @@ def calculate_error_from_list(params):
 initial_params, bounds, names = pack_params(system)
 
 ['PbIIlambda3', 'PbIIc', 'PbIId', 'PbIIcostheta0', 'PbIIn', 'PbIIbeta', 'PbIIlambda2', 'PbIIB', 'PbIIlambda1', 'PbIIA']
-initial_params = [1.0844974213798946, 0.0, 1.0827448710847265, 0.0, 0.87335114727974794, 1.6236373956404182, 8796.8577194349473, 2.3376314006404924, 45487.849488957079]
+#initial_params = [-3.0, 4.658513032577969e-05, 0.7984278517358414, -1.8699527049207918e-05, 322795.143059622, 1.109701376931432, 728.467043363168, 4.234875101724356, 1163313.832162179] #error=0.7721
+initial_params = [1.8945935591480063, 1.912324201715158e-05, 2.0538627438753703, -3.301316559841533e-05, 16.319977401150283, 0.6836858011442968, 526.419534975563, 3.6302755638145436, 392278.1549681662] #Error: 0.6949
 
 import numpy
 from scipy.optimize import minimize
@@ -299,8 +300,8 @@ def randomize():
 			if new > b[1]:
 				new -= (b[1]-new)
 			params.append( new )
-		guess = minimize(calculate_error_from_list, params, bounds=bounds, method='L-BFGS-B')
-		#guess = utils.Struct(fun=calculate_error_from_list(best_min.x), x=best_min.x)
+		guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
+		#guess = minimize(calculate_error_from_list, params, bounds=bounds, method='Nelder-Mead') #L-BFGS-B
 		log.write('---\n')
 		if guess.fun < best_min.fun:
 			best_min = guess
@@ -319,5 +320,4 @@ print bounds
 print 'Error: %.4g' % best_min.fun
 
 os.chdir('..')
-
 
