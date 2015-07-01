@@ -144,9 +144,9 @@ def pack_params(system):
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
 		if s=='PbII:':
-			names += [s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
+			names += [s+'c', s+'d', s+'costheta0', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)]
+			bounds += [(0,1e6), (0,1e6), (-1,1), (0,1), (0,3), (0,1e6), (0,6), (0,1e6)]
 		if s=='III:':
 			names += [s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.lambda2, t.B, t.lambda1, t.A]
@@ -160,6 +160,10 @@ def pack_params(system):
 			params += [t.c, t.d, t.costheta0]
 			bounds += [(0,1e6), (0,1e6), (-1,1)]
 
+	if len(params)!=len(bounds) or len(params)!=len(names):
+		print 'There are %d parameters, but %d bounds and %d names!' % (len(params), len(bounds), len(names))
+		exit()
+		
 	return params, bounds, names
 
 def unpack_params(params, system):
@@ -303,6 +307,7 @@ print names
 
 ['PbII:c', 'PbII:d', 'PbII:costheta0', 'PbII:n', 'PbII:beta', 'PbII:lambda2', 'PbII:B', 'PbII:lambda1', 'PbII:A', 'IPbI:c', 'IPbI:d', 'IPbI:costheta0', 'IIPb:c', 'IIPb:d', 'IIPb:costheta0', 'III:lambda2', 'III:B', 'III:lambda1', 'III:A']
 
+
 import numpy
 from scipy.optimize import minimize
 
@@ -313,16 +318,24 @@ def randomize():
 		params = []
 		for p,b in zip(best_min.x, bounds):
 			new = random.gauss(p, abs(p*0.2) + 0.001)
+			#reflect
 			if new < b[0]:
 				new += (b[0]-new)
-			if new > b[1]:
+			elif new > b[1]:
 				new -= (b[1]-new)
+			#just set
+			if new < b[0]:
+				new = b[0]
+			elif new > b[1]:
+				new = b[1]
 			params.append( new )
 		guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 		#guess = minimize(calculate_error_from_list, params, bounds=bounds)
 		#guess = minimize(calculate_error_from_list, params, method='Nelder-Mead')
 		if guess.fun < best_min.fun:
 			best_min = guess
+			for n,x in zip(names,best_min.x):
+				print n, x
 			print list(best_min.x)
 			print 'Error: %.4g' % best_min.fun
 	return best_min
