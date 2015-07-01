@@ -143,21 +143,21 @@ def pack_params(system):
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
 		if s=='PbII:':
-			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
-			params += [t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
-			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
+			names += [s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
+			params += [t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
+			bounds += [(0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
 		if s=='III:':
-			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
-			params += [t.lambda3, t.c, t.d, t.costheta0, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
-			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
+			names += [s+'c', s+'d', s+'costheta0', s+'n', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
+			params += [t.c, t.d, t.costheta0, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
+			bounds += [(0,1e6), (0,1e6), (-1,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
 		if s=='IPbI:':
-			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'D', s+'R']
-			params += [t.lambda3, t.c, t.d, t.costheta0, t.D, t.R]
-			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
+			names += [s+'c', s+'d', s+'costheta0', s+'D', s+'R']
+			params += [t.c, t.d, t.costheta0, t.D, t.R]
+			bounds += [(0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
 		if s=='IIPb:':
-			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'D', s+'R']
-			params += [t.lambda3, t.c, t.d, t.costheta0, t.D, t.R]
-			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
+			names += [s+'c', s+'d', s+'costheta0', s+'D', s+'R']
+			params += [t.c, t.d, t.costheta0, t.D, t.R]
+			bounds += [(0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
 
 	return params, bounds, names
 
@@ -182,12 +182,22 @@ def unpack_params(params, system):
 		t.e = tuple(params[i:i+4])
 		i += 4
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			#num_params=4
-			#t.A, t.B, t.lambda1, t.lambda2 = params[i:i+num_params]
-			num_params=9
-			t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
-			i+=num_params
+		s = t.e1+t.e2+t.e3+':'
+		num_params = 0
+		if s=='PbII:':
+			num_params = 10
+			t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
+		elif s=='III:':
+			num_params = 9
+			t.c, t.d, t.costheta0, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
+		elif s=='IPbI:':
+			num_params = 5
+			t.c, t.d, t.costheta0, t.D, t.R = params[i:i+num_params]
+		elif s=='IIPb:':
+			num_params = 5
+			t.c, t.d, t.costheta0, t.D, t.R = params[i:i+num_params]
+		i+=num_params
+	
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
 	i_type = [t for t in system.atom_types if t.element==53][0]
