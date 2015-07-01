@@ -232,7 +232,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI2_r'): continue #for PbI testing
+			if not name.startswith('PbI'): continue #for PbI testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
