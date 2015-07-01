@@ -20,8 +20,13 @@ def read_tersoff_file(filename):
 	
 	return tersoff_params
 
-def write_tersoff_file(system):
-	f = open(system.name+'.tersoff', 'w')
+def write_tersoff_file(system, best=False,error=-1):
+	if best:
+		f = open(system.name+'_best.tersoff', 'w')
+		f.write('# Error: ' + str(error)+'\n')
+	else:
+		f = open(system.name+'.tersoff', 'w')
+
 	pb_i_i = [t for t in system.tersoff_params if (t.e1,t.e2,t.e3)==('Pb','I','I')][0]
 	for i,t in enumerate(system.tersoff_params):
 		if (t.e1,t.e2,t.e3)==('I','Pb','Pb'):
@@ -237,7 +242,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI'): continue #for PbI testing
+			if not name.startswith('PbI') : continue #for PbI testing
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name)
 			if any([utils.dist(atoms[0], a)>3.0 for a in atoms]): continue
@@ -336,7 +341,7 @@ def randomize():
 			best_min = guess
 			for n,x in zip(names,best_min.x):
 				print n, x
-			print list(best_min.x)
+			write_tersoff_file(system,best=True,error=best_min.fun)
 			print 'Error: %.4g' % best_min.fun
 	return best_min
 
