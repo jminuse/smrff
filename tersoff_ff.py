@@ -143,21 +143,21 @@ def pack_params(system):
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
 		if s=='PbII:':
-			names += [s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
-			params += [t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
-			bounds += [(0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
+			names += [s+'gamma', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
+			params += [t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
+			bounds += [(1e-7,1e-3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0.1,2), (2,6 )]
 		if s=='III:':
-			names += [s+'c', s+'d', s+'costheta0', s+'n', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
-			params += [t.c, t.d, t.costheta0, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
-			bounds += [(0,1e6), (0,1e6), (-1,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
+			names += [s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
+			params += [t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
+			bounds += [(0,3), (0,1e6), (0,6), (0,1e6), (0.1,2), (2,4 )]
 		if s=='IPbI:':
 			names += [s+'c', s+'d', s+'costheta0', s+'D', s+'R']
 			params += [t.c, t.d, t.costheta0, t.D, t.R]
-			bounds += [(0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
+			bounds += [(0,1e6), (0,1e6), (-1,1), (0.1,2), (1,3)]
 		if s=='IIPb:':
 			names += [s+'c', s+'d', s+'costheta0', s+'D', s+'R']
 			params += [t.c, t.d, t.costheta0, t.D, t.R]
-			bounds += [(0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
+			bounds += [(0,1e6), (0,1e6), (-1,1), (0.1,2), (1,3)]
 
 	return params, bounds, names
 
@@ -185,11 +185,11 @@ def unpack_params(params, system):
 		s = t.e1+t.e2+t.e3+':'
 		num_params = 0
 		if s=='PbII:':
-			num_params = 10
-			t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
+			num_params = 11
+			t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
 		elif s=='III:':
-			num_params = 9
-			t.c, t.d, t.costheta0, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
+			num_params = 6
+			t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
 		elif s=='IPbI:':
 			num_params = 5
 			t.c, t.d, t.costheta0, t.D, t.R = params[i:i+num_params]
@@ -232,7 +232,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI'): continue #for PbI testing
+			if not name.startswith('PbI2_r'): continue #for PbI testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -284,7 +284,6 @@ for line in commands:
 
 system.tersoff_params = read_tersoff_file('input.tersoff')
 
-log = open(system.name+'.params', 'w')
 def calculate_error_from_list(params):
 	unpack_params(params, system)
 	
@@ -293,16 +292,11 @@ def calculate_error_from_list(params):
 	
 	error = calculate_error(system)
 	
-	log.write( '%s %g\n' % (list(params), error))
-	
 	return error
 
 initial_params, bounds, names = pack_params(system)
 
-print names
-exit()
-
-initial_params = [0.28279425601204583, 1.965384767032681e-07, 1.3665418684481765e-07, -5.5171000313435071e-15, 6.052432850916392, 0.044029809020889848, 605.6088594758387, 4.8165942034667077, 3732878.2397423275, 0.0026613704450947225, 0.082704984361372857, -0.15418251337807234, 0.00048405438645680973, 0.0016544462180032736, -7.4899559919088185e-06, 2.5353410853603125e-06, 3.4918035407623299e-05, -0.015679795456745034, 2.6315550638796417e-06, 0.56067750921784132, 3.5285044070735273e-06, 3.0868693593091818e-05, 0.00045919924952706116, 0.00045624353982215882, 0.00012924810132165212, 0.0038157634148834815, -1.8390806364969089e-05, 0.0053804960347081073, 0.033099316600820453, 1.2051557308286559e-05, 12.06688882133929, 1.1456424536215685e-07, 5.1848727883446824e-06] # Error: 0.9367
+['PbII:gamma', 'PbII:c', 'PbII:d', 'PbII:costheta0', 'PbII:n', 'PbII:beta', 'PbII:lambda2', 'PbII:B', 'PbII:lambda1', 'PbII:A', 'PbII:D', 'PbII:R', 'IPbI:c', 'IPbI:d', 'IPbI:costheta0', 'IPbI:D', 'IPbI:R', 'IIPb:c', 'IIPb:d', 'IIPb:costheta0', 'IIPb:D', 'IIPb:R', 'III:c', 'III:d', 'III:costheta0', 'III:n', 'III:lambda2', 'III:B', 'III:lambda1', 'III:A', 'III:D', 'III:R']
 
 import numpy
 from scipy.optimize import minimize
@@ -319,10 +313,9 @@ def randomize():
 			if new > b[1]:
 				new -= (b[1]-new)
 			params.append( new )
-		# guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-		# guess = minimize(calculate_error_from_list, params, bounds=bounds) #L-BFGS-B
-		guess = minimize(calculate_error_from_list, params, method='Nelder-Mead') #L-BFGS-B
-		log.write('---\n')
+		guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
+		#guess = minimize(calculate_error_from_list, params, bounds=bounds)
+		#guess = minimize(calculate_error_from_list, params, method='Nelder-Mead')
 		if guess.fun < best_min.fun:
 			best_min = guess
 			print list(best_min.x)
