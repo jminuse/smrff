@@ -297,6 +297,15 @@ def calculate_error_from_list(params):
 initial_params, bounds, names = pack_params(system)
 
 ['PbII:gamma', 'PbII:c', 'PbII:d', 'PbII:costheta0', 'PbII:n', 'PbII:beta', 'PbII:lambda2', 'PbII:B', 'PbII:lambda1', 'PbII:A', 'PbII:D', 'PbII:R', 'IPbI:c', 'IPbI:d', 'IPbI:costheta0', 'IPbI:D', 'IPbI:R', 'IIPb:c', 'IIPb:d', 'IIPb:costheta0', 'IIPb:D', 'IIPb:R', 'III:c', 'III:d', 'III:costheta0', 'III:n', 'III:lambda2', 'III:B', 'III:lambda1', 'III:A', 'III:D', 'III:R']
+# [			   'PbII:c',           'PbII:d',      'PbII:costheta0',        'PbII:beta',    'PbII:lambda2',           'PbII:B',     'PbII:lambda1',            'PbII:A',           'PbII:D',             'PbII:R',
+# [4.1287876266223278e-06, 0.21789745362433743, -0.00037420242692049702, 2.6474901766484749, 0.63476454179661923, 431.11010921539224, 3.6565484084553441, 358155.72588718776, 0.060548737378960917, 20.843859928700976, 
+#               'IPbI:c',             'IPbI:d',    'IPbI:costheta0',           'IPbI:D',               'IPbI:R',            'IIPb:c',
+# 0.00024758972076509002, 0.55599558451098996, 0.0004376603244081943, 0.89650555523138586, 73.717622584260198, 0.0030278224445842287,
+#            'IIPb:d',       'IIPb:costheta0',           'IIPb:D',              'IIPb:R',
+#  1.4902669494416616, -0.00076418140994361536, 0.00060448319559798047, 19.131997008402401,
+#               'III:c',              'III:d',       'III:costheta0',       'III:lambda2',            'III:B',      'III:lambda1',            'III:A',             'III:D',            'III:R']
+#   0.0011719012838248273, 0.17339043930831116, 0.0061959818719566507, 0.98864672420444344, 5579.5519070479677, 2.7527370057016274, 23355.695607065605, 0.020400241031268973, 10.034588469578871]
+# Error: 0.4353
 
 import numpy
 from scipy.optimize import minimize
