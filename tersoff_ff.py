@@ -141,25 +141,20 @@ def pack_params(system):
 		params += list(t.e)
 		bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
 	for t in system.tersoff_params:
-		if t.e1=='Pb' and t.e2=='I' and t.e3=='I':
-			s = t.e1+t.e2+t.e3
-			
+		s = t.e1+t.e2+t.e3+':'
+		if s=='PbII:':
 			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
 			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
-
-		if t.e1=='I' and t.e2=='I' and t.e3=='I':
-			s = t.e1+t.e2+t.e3
+		if s=='III:':
 			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'n', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
 			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0, 10), (0,10 )]
-		if t.e1=='I' and t.e2=='Pb' and t.e3=='I':
-			s = t.e1+t.e2+t.e3
+		if s=='IPbI:':
 			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'D', s+'R']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.D, t.R]
 			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
-		if t.e1=='I' and t.e2=='I' and t.e3=='Pb':
-			s = t.e1+t.e2+t.e3
+		if s=='IIPb:':
 			names += [s+'lambda3', s+'c', s+'d', s+'costheta0', s+'D', s+'R']
 			params += [t.lambda3, t.c, t.d, t.costheta0, t.D, t.R]
 			bounds += [  (-3,3), (0,1e6), (0,1e6), (-1,1), (0, 10), (0,10 )]
