@@ -17,6 +17,7 @@ def read_tersoff_file(filename):
 		if len(columns)==17:
 			e1, e2, e3, m, gamma, lambda3, c, d, costheta0, n, beta, lambda2, B, R, D, lambda1, A = [ (float(s) if s[-1].isdigit() else s) for s in columns]
 			tersoff_params.append( utils.Struct(e1=e1, e2=e2, e3=e3, m=m, gamma=gamma, lambda3=lambda3, c=c, d=d, costheta0=costheta0, n=n, beta=beta, lambda2=lambda2, B=B, R=R, D=D, lambda1=lambda1, A=A) )
+	
 	return tersoff_params
 
 def write_tersoff_file(system, best=False,error=-1):
@@ -148,9 +149,9 @@ def pack_params(system):
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
 		if s=='PbII:':
-			names += [s+'gamma', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
-			params += [t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(1e-7,1e-3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)]
+			names += [s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
+			params += [t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
+			bounds += [(0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)]
 		if s=='III:':
 			names += [s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.lambda2, t.B, t.lambda1, t.A]
@@ -190,8 +191,8 @@ def unpack_params(params, system):
 		s = t.e1+t.e2+t.e3+':'
 		num_params = 0
 		if s=='PbII:':
-			num_params = 9
-			t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
+			num_params = 8
+			t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 		elif s=='III:':
 			num_params = 4
 			t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
@@ -240,6 +241,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			if not name.startswith('PbI') : continue #for PbI testing
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name)
+			if any([utils.dist(atoms[0], a)>3.0 for a in atoms]): continue
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
@@ -284,7 +286,7 @@ pair_coeff * * lj/cut/coul/cut 0.0 1.0
 
 compute atom_pe all pe/atom
 ''').splitlines()
-lmp = lammps('',['-log',system.name+'.log','-screen','none'])
+lmp = lammps('',['-log',system.name+'.log', '-screen','none'])
 for line in commands:
 	lmp.command(line)
 
@@ -301,6 +303,10 @@ def calculate_error_from_list(params):
 	return error
 
 initial_params, bounds, names = pack_params(system)
+
+print names
+
+['PbII:c', 'PbII:d', 'PbII:costheta0', 'PbII:n', 'PbII:beta', 'PbII:lambda2', 'PbII:B', 'PbII:lambda1', 'PbII:A', 'IPbI:c', 'IPbI:d', 'IPbI:costheta0', 'IIPb:c', 'IIPb:d', 'IIPb:costheta0', 'III:lambda2', 'III:B', 'III:lambda1', 'III:A']
 
 import numpy
 from scipy.optimize import minimize
