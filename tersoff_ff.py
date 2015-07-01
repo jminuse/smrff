@@ -19,8 +19,13 @@ def read_tersoff_file(filename):
 			tersoff_params.append( utils.Struct(e1=e1, e2=e2, e3=e3, m=m, gamma=gamma, lambda3=lambda3, c=c, d=d, costheta0=costheta0, n=n, beta=beta, lambda2=lambda2, B=B, R=R, D=D, lambda1=lambda1, A=A) )
 	return tersoff_params
 
-def write_tersoff_file(system):
-	f = open(system.name+'.tersoff', 'w')
+def write_tersoff_file(system, best=False,error=-1):
+	if best:
+		f = open(system.name+'_best.tersoff', 'w')
+		f.write('# Error: ' + str(error)+'\n')
+	else:
+		f = open(system.name+'.tersoff', 'w')
+
 	pb_i_i = [t for t in system.tersoff_params if (t.e1,t.e2,t.e3)==('Pb','I','I')][0]
 	for i,t in enumerate(system.tersoff_params):
 		if (t.e1,t.e2,t.e3)==('I','Pb','Pb'):
@@ -232,7 +237,8 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI'): continue #for PbI testing
+			if not name.startswith('PbI') : continue #for PbI testing
+			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -316,6 +322,7 @@ def randomize():
 		#guess = minimize(calculate_error_from_list, params, method='Nelder-Mead')
 		if guess.fun < best_min.fun:
 			best_min = guess
+			write_tersoff_file(system,best=True,error=best_min.fun)
 			print list(best_min.x)
 			print 'Error: %.4g' % best_min.fun
 	return best_min
