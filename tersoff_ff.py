@@ -151,19 +151,19 @@ def pack_params(system):
 		if s=='PbII:':
 			names += [s+'c', s+'d', s+'costheta0', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(0,1e6), (0,1e6), (-1,1), (0,1), (0,3), (0,1e6), (0,6), (0,1e6)]
+			bounds += [(1,1e6), (1,1e6), (-1,1), (0,1), (1,3), (1,1e6), (1,6), (1,1e6)]
 		if s=='III:':
 			names += [s+'lambda2', s+'B', s+'lambda1', s+'A']
 			params += [t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(0,3), (0,1e6), (0,6), (0,1e6)]
+			bounds += [(1,3), (1,1e6), (1,6), (1,1e6)]
 		if s=='IPbI:':
 			names += [s+'c', s+'d', s+'costheta0']
 			params += [t.c, t.d, t.costheta0]
-			bounds += [(0,1e6), (0,1e6), (-1,1)]
+			bounds += [(1,1e6), (1,1e6), (-1,1)]
 		if s=='IIPb:':
 			names += [s+'c', s+'d', s+'costheta0']
 			params += [t.c, t.d, t.costheta0]
-			bounds += [(0,1e6), (0,1e6), (-1,1)]
+			bounds += [(1,1e6), (1,1e6), (-1,1)]
 
 	if len(params)!=len(bounds) or len(params)!=len(names):
 		print 'There are %d parameters, but %d bounds and %d names!' % (len(params), len(bounds), len(names))
@@ -345,10 +345,36 @@ def randomize():
 			print 'Error: %.4g' % best_min.fun
 	return best_min
 
-#best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='Nelder-Mead')
-#best_min = minimize(calculate_error_from_list, initial_params, bounds=bounds, method='L-BFGS-B')
+def try_params():
+	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
+	print 'Error: %.4g' % best_min.fun
+	for param_index in range(len(best_min.x)):
+		changed = []
+		for step in range(10):
+			params = []
+			for i,p,b in zip(range(len(best_min.x)), best_min.x, bounds):
+				new = p
+				if i==param_index:
+					new = random.gauss(p, abs(p*0.5) + 0.001)
+				#reflect
+				if new < b[0]:
+					new += (b[0]-new)
+				elif new > b[1]:
+					new -= (b[1]-new)
+				#just set
+				if new < b[0]:
+					new = b[0]
+				elif new > b[1]:
+					new = b[1]
+				params.append( new )
+			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
+			changed.append( guess.fun != best_min.fun )
+		if not any(changed):
+			print names[param_index], 'has no effect'
+	return best_min
 
-best_min = randomize()
+try_params()
+exit()
 
 print names
 print list(best_min.x)
