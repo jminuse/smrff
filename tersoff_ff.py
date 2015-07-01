@@ -143,21 +143,21 @@ def pack_params(system):
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
 		if s=='PbII:':
-			names += [s+'gamma', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
-			params += [t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
-			bounds += [(1e-7,1e-3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6), (0.1,2), (2,6 )]
+			names += [s+'gamma', s+'c', s+'d', s+'costheta0', s+'n', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
+			params += [t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
+			bounds += [(1e-7,1e-3), (0,1e6), (0,1e6), (-1,1),   (0,1),   (0,3), (0,1e6), (0,6), (0,1e6)]
 		if s=='III:':
-			names += [s+'lambda2', s+'B', s+'lambda1', s+'A', s+'D', s+'R']
-			params += [t.lambda2, t.B, t.lambda1, t.A, t.D, t.R]
-			bounds += [(0,3), (0,1e6), (0,6), (0,1e6), (0.1,2), (2,4 )]
+			names += [s+'lambda2', s+'B', s+'lambda1', s+'A']
+			params += [t.lambda2, t.B, t.lambda1, t.A]
+			bounds += [(0,3), (0,1e6), (0,6), (0,1e6)]
 		if s=='IPbI:':
-			names += [s+'c', s+'d', s+'costheta0', s+'D', s+'R']
-			params += [t.c, t.d, t.costheta0, t.D, t.R]
-			bounds += [(0,1e6), (0,1e6), (-1,1), (0.1,2), (1,3)]
+			names += [s+'c', s+'d', s+'costheta0']
+			params += [t.c, t.d, t.costheta0]
+			bounds += [(0,1e6), (0,1e6), (-1,1)]
 		if s=='IIPb:':
-			names += [s+'c', s+'d', s+'costheta0', s+'D', s+'R']
-			params += [t.c, t.d, t.costheta0, t.D, t.R]
-			bounds += [(0,1e6), (0,1e6), (-1,1), (0.1,2), (1,3)]
+			names += [s+'c', s+'d', s+'costheta0']
+			params += [t.c, t.d, t.costheta0]
+			bounds += [(0,1e6), (0,1e6), (-1,1)]
 
 	return params, bounds, names
 
@@ -185,17 +185,17 @@ def unpack_params(params, system):
 		s = t.e1+t.e2+t.e3+':'
 		num_params = 0
 		if s=='PbII:':
-			num_params = 11
-			t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
+			num_params = 9
+			t.gamma, t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 		elif s=='III:':
-			num_params = 6
-			t.lambda2, t.B, t.lambda1, t.A, t.D, t.R = params[i:i+num_params]
+			num_params = 4
+			t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
 		elif s=='IPbI:':
-			num_params = 5
-			t.c, t.d, t.costheta0, t.D, t.R = params[i:i+num_params]
+			num_params = 3
+			t.c, t.d, t.costheta0 = params[i:i+num_params]
 		elif s=='IIPb:':
-			num_params = 5
-			t.c, t.d, t.costheta0, t.D, t.R = params[i:i+num_params]
+			num_params = 3
+			t.c, t.d, t.costheta0 = params[i:i+num_params]
 		i+=num_params
 	
 
@@ -232,7 +232,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI2_r'): continue #for PbI testing
+			if not name.startswith('PbI'): continue #for PbI testing
 			energy, atoms = g09.parse_atoms(name)
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -295,17 +295,6 @@ def calculate_error_from_list(params):
 	return error
 
 initial_params, bounds, names = pack_params(system)
-
-['PbII:gamma', 'PbII:c', 'PbII:d', 'PbII:costheta0', 'PbII:n', 'PbII:beta', 'PbII:lambda2', 'PbII:B', 'PbII:lambda1', 'PbII:A', 'PbII:D', 'PbII:R', 'IPbI:c', 'IPbI:d', 'IPbI:costheta0', 'IPbI:D', 'IPbI:R', 'IIPb:c', 'IIPb:d', 'IIPb:costheta0', 'IIPb:D', 'IIPb:R', 'III:c', 'III:d', 'III:costheta0', 'III:n', 'III:lambda2', 'III:B', 'III:lambda1', 'III:A', 'III:D', 'III:R']
-# [			   'PbII:c',           'PbII:d',      'PbII:costheta0',        'PbII:beta',    'PbII:lambda2',           'PbII:B',     'PbII:lambda1',            'PbII:A',           'PbII:D',             'PbII:R',
-# [4.1287876266223278e-06, 0.21789745362433743, -0.00037420242692049702, 2.6474901766484749, 0.63476454179661923, 431.11010921539224, 3.6565484084553441, 358155.72588718776, 0.060548737378960917, 20.843859928700976, 
-#               'IPbI:c',             'IPbI:d',    'IPbI:costheta0',           'IPbI:D',               'IPbI:R',            'IIPb:c',
-# 0.00024758972076509002, 0.55599558451098996, 0.0004376603244081943, 0.89650555523138586, 73.717622584260198, 0.0030278224445842287,
-#            'IIPb:d',       'IIPb:costheta0',           'IIPb:D',              'IIPb:R',
-#  1.4902669494416616, -0.00076418140994361536, 0.00060448319559798047, 19.131997008402401,
-#               'III:c',              'III:d',       'III:costheta0',       'III:lambda2',            'III:B',      'III:lambda1',            'III:A',             'III:D',            'III:R']
-#   0.0011719012838248273, 0.17339043930831116, 0.0061959818719566507, 0.98864672420444344, 5579.5519070479677, 2.7527370057016274, 23355.695607065605, 0.020400241031268973, 10.034588469578871]
-# Error: 0.4353
 
 import numpy
 from scipy.optimize import minimize
