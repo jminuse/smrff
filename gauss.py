@@ -35,5 +35,12 @@ def new_jobs_2():
 		g09.job('PbI+_%d_def2SVP' % i, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None, charge_and_multiplicity='1,1').wait()
 		shutil.copyfile('gaussian/PbI+.cml', 'gaussian/PbI+_%d_def2SVP.cml' % i)
 
-new_jobs_2()
+def from_md():
+	frames = files.read_xyz('out.xyz')
+	g09.job('PbI2_PbI2_def2SVP', 'HSEH1PBE/Def2SVP Opt SCRF(Solvent=Water)', frames[1], queue=None, force=True).wait()
+	for i,atoms in enumerate(frames[2:]):
+		print 'Running %d' % i
+		g09.job('PbI2_PbI2_%d_def2SVP' % i, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None).wait()
+
+from_md()
 
