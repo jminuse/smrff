@@ -1,2 +1,7 @@
 # smrff
 A reactive force field implementation in LAMMPS
+
+Most parameters have no effect - can check by varying them, error does not change.
+c and d may not need to be varied separately - with right d, curves have same shape for any c > 10 or so. 
+Maybe do repulsive parameters (A and lambda1) first, via PbI+, since repulsive terms are supposed to be solely pairwise. Then parameterize attractive terms with repulsive terms fixed. 
+

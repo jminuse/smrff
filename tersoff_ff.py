@@ -32,9 +32,9 @@ def write_tersoff_file(system, best=False,error=-1):
 		if (t.e1,t.e2,t.e3)==('I','Pb','Pb'):
 			n = t
 			t = pb_i_i
-			f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (n.e1, n.e2, n.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
+			f.write(('%-2s '*3+('%12.6g '*6)+'\n         '+('%12.6g '*8)+'\n\n') % (n.e1, n.e2, n.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
 		else:
-			f.write(('%3s '*3+('%8.8g '*6)+'\n            '+('%8.8g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
+			f.write(('%-2s '*3+('%12.6g '*6)+'\n         '+('%12.6g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
 	f.close()
 
 def set_lammps_parameters(system):
@@ -149,21 +149,9 @@ def pack_params(system):
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
 		if s=='PbII:':
-			names += [s+'c', s+'d', s+'costheta0', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A']
-			params += [t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(1,1e6), (1,1e6), (-1,1), (0,1), (1,3), (1,1e6), (1,6), (1,1e6)]
-		if s=='III:':
-			names += [s+'lambda2', s+'B', s+'lambda1', s+'A']
-			params += [t.lambda2, t.B, t.lambda1, t.A]
-			bounds += [(1,3), (1,1e6), (1,6), (1,1e6)]
-		if s=='IPbI:':
-			names += [s+'c', s+'d', s+'costheta0']
-			params += [t.c, t.d, t.costheta0]
-			bounds += [(1,1e6), (1,1e6), (-1,1)]
-		if s=='IIPb:':
-			names += [s+'c', s+'d', s+'costheta0']
-			params += [t.c, t.d, t.costheta0]
-			bounds += [(1,1e6), (1,1e6), (-1,1)]
+			names += [s+'c', s+'costheta0', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'R', s+'D']
+			params += [t.c, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.R, t.D]
+			bounds += [(10,1e4), (-0.05,0.05), (0,1), (1,3), (1,1e6), (1,5), (1,1e6), (2.5,3.5), (0.1,0.5)]
 
 	if len(params)!=len(bounds) or len(params)!=len(names):
 		print 'There are %d parameters, but %d bounds and %d names!' % (len(params), len(bounds), len(names))
@@ -195,17 +183,8 @@ def unpack_params(params, system):
 		s = t.e1+t.e2+t.e3+':'
 		num_params = 0
 		if s=='PbII:':
-			num_params = 8
-			t.c, t.d, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
-		elif s=='III:':
-			num_params = 4
-			t.lambda2, t.B, t.lambda1, t.A = params[i:i+num_params]
-		elif s=='IPbI:':
-			num_params = 3
-			t.c, t.d, t.costheta0 = params[i:i+num_params]
-		elif s=='IIPb:':
-			num_params = 3
-			t.c, t.d, t.costheta0 = params[i:i+num_params]
+			num_params = 9
+			t.c, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.R, t.D = params[i:i+num_params]
 		i+=num_params
 	
 
@@ -245,7 +224,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			if not name.startswith('PbI') : continue #for PbI testing
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name)
-			if any([utils.dist(atoms[0], a)>3.0 for a in atoms]): continue
+			if any([utils.dist(atoms[0], a)>3.5 for a in atoms]): continue
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
@@ -308,41 +287,67 @@ def calculate_error_from_list(params):
 
 initial_params, bounds, names = pack_params(system)
 
-print names
-
-['PbII:c', 'PbII:d', 'PbII:costheta0', 'PbII:n', 'PbII:beta', 'PbII:lambda2', 'PbII:B', 'PbII:lambda1', 'PbII:A', 'IPbI:c', 'IPbI:d', 'IPbI:costheta0', 'IIPb:c', 'IIPb:d', 'IIPb:costheta0', 'III:lambda2', 'III:B', 'III:lambda1', 'III:A']
-
-
 import numpy
-from scipy.optimize import minimize
+from scipy.optimize import minimize, fmin_l_bfgs_b
 
-def randomize():
+def stochastic(use_gradient=True):
 	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 	print 'Error: %.4g' % best_min.fun
+	
+	def new_param_guess(start):
+		while True: #keep going until new params are generated
+			params = []
+			for p,b in zip(start, bounds):
+				new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
+				#reflect
+				if new < b[0]:
+					new += (b[0]-new)
+				elif new > b[1]:
+					new -= (b[1]-new)
+				#just set
+				if new < b[0]:
+					new = b[0]
+				elif new > b[1]:
+					new = b[1]
+				params.append( new )
+			if cmp(list(params), list(start)) != 0: #compare old and new param lists
+				return params
+	
+	def error_gradient(x):
+		e0 = calculate_error_from_list(x)
+		gradient = []
+		for i in range(len(x)):
+			oldx = x[i]
+			sign_oldx = -1 if oldx<0 else 1
+			newx = oldx + 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
+			if newx>bounds[i][1] or newx<bounds[i][0]:
+				newx = oldx - 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
+			if newx>bounds[i][1] or newx<bounds[i][0]:
+				print oldx, newx, bounds[i][0], bounds[i][1]
+				exit()
+			dif = newx - oldx
+			x[i] = newx
+			gradient.append( (calculate_error_from_list(x)-e0)/dif )
+			x[i] = oldx
+		return numpy.array(gradient)
+	
 	while True:
-		params = []
-		for p,b in zip(best_min.x, bounds):
-			new = random.gauss(p, abs(p*0.2) + 0.001)
-			#reflect
-			if new < b[0]:
-				new += (b[0]-new)
-			elif new > b[1]:
-				new -= (b[1]-new)
-			#just set
-			if new < b[0]:
-				new = b[0]
-			elif new > b[1]:
-				new = b[1]
-			params.append( new )
-		guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-		#guess = minimize(calculate_error_from_list, params, bounds=bounds)
-		#guess = minimize(calculate_error_from_list, params, method='Nelder-Mead')
+		params = new_param_guess(best_min.x)
+		if use_gradient:
+			x, fun, _ = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds)
+			guess = utils.Struct(fun=fun,x=x)
+			print calculate_error_from_list(params), guess.fun, best_min.fun
+		else:
+			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
+			print guess.fun, best_min.fun
 		if guess.fun < best_min.fun:
 			best_min = guess
+			print ''
 			for n,x in zip(names,best_min.x):
-				print n, x
+				print '%-15s %-15g' % (n, x)
+			unpack_params(best_min.x, system)
 			write_tersoff_file(system,best=True,error=best_min.fun)
-			print 'Error: %.4g' % best_min.fun
+			print 'Error = %.4g' % best_min.fun
 	return best_min
 
 def try_params():
@@ -355,7 +360,7 @@ def try_params():
 			for i,p,b in zip(range(len(best_min.x)), best_min.x, bounds):
 				new = p
 				if i==param_index:
-					new = random.gauss(p, abs(p*0.5) + 0.001)
+					new = random.gauss(p, 0.2*(b[1]-b[0]) )
 				#reflect
 				if new < b[0]:
 					new += (b[0]-new)
@@ -373,13 +378,7 @@ def try_params():
 			print names[param_index], 'has no effect'
 	return best_min
 
-try_params()
-exit()
+#try_params()
 
-print names
-print list(best_min.x)
-print bounds
-print 'Error: %.4g' % best_min.fun
-
-os.chdir('..')
+stochastic()
 
