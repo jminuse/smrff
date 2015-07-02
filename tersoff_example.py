@@ -44,7 +44,7 @@ def set_lammps_parameters(system):
 	for t in system.atom_types:
 		if hasattr(t,'vdw_e'):
 			lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
-			lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
+			lmp.command('pair_coeff %d * lj/cut/coul/long %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
 	for t in system.bond_types:
 		lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
 	for t in system.angle_types:
@@ -54,15 +54,23 @@ def set_lammps_parameters(system):
 
 def run(system):
 	#run LAMMPS
+	seed = str(1)
 	set_lammps_parameters(system)
 	commands = '''
-dump 1 all xyz 1 '''+system.name+'''.xyz 
-min_style fire
+dump 1 all xyz 10000 '''+system.name+'''.xyz
+thermo 1000
 minimize 0.0 1.0e-8 1000 100000
+velocity all create 300.0 '''+seed+''' rot yes dist gaussian
+group mobile id > 1
+fix solvent all langevin 300.0 300.1 100.0 '''+seed+'''
+fix motion mobile nve
+fix constrain all spring/rg 100.0 3.0
+timestep 1.0
+run 100000
 	'''
 	for line in commands.splitlines():
 		lmp.command(line)
-	
+
 I_ = 66
 H_ = 54
 N_ = 53
@@ -74,7 +82,7 @@ I = 838
 extra = {
 	(H_, I_): (100.0, 2.1), 
 	(N_, H_, I_): (10.0, 180.0), 
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.4, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.2, vdw_e=0.1, vdw_r=2.0, D0=5.0, alpha=1.5, r0=2.8),
 	(Pb_, I_): (100.0, 2.9), 
 	(I_, Pb_, I_): (10.0, 95.0),
@@ -82,17 +90,20 @@ extra = {
 	(54, 53, 54, 66): (0.0,0.0,0.0),
 }
 
-system = utils.System(box_size=[100, 100, 100], name='md_tersoff')
+system = utils.System(box_size=[20, 20, 20], name='md_tersoff')
 
-total = utils.Molecule('gaussian/PbI2', extra_parameters=extra, check_charges=False)
-system.add(total, 0.0)
+m = utils.Molecule('gaussian/PbI2', extra_parameters=extra, check_charges=False)
+for x in range(-1,1,1):
+	for y in range(0,1,1):
+		for z in range(0,1,1):
+			system.add(m, x*6, y*6, z*4)
 
 os.chdir('lammps')
 files.write_lammps_data(system)
 
 commands = ('''units real
 atom_style full
-pair_style hybrid/overlay lj/cut/coul/cut 100.0 tersoff
+pair_style hybrid/overlay lj/cut/coul/long 10.0 tersoff
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
@@ -100,8 +111,9 @@ special_bonds lj/coul 0.0 0.0 0.5
 
 boundary p p p
 read_data	'''+system.name+'''.data
+kspace_style pppm 1.0e-4
 
-pair_coeff * * lj/cut/coul/cut 0.0 1.0
+pair_coeff * * lj/cut/coul/long 0.0 1.0
 
 compute atom_pe all pe/atom
 ''').splitlines()
