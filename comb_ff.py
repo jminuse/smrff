@@ -251,7 +251,7 @@ for element_string, molecules in system.molecules_by_elements.iteritems():
 os.chdir('lammps')
 files.write_lammps_data(system)
 
-commands = ('''units real
+commands = ('''units metal
 atom_style full
 pair_style hybrid/overlay lj/cut/coul/cut 100.0 comb3 polar_off
 bond_style harmonic
