@@ -5,15 +5,26 @@ import utils, files, g09
 
 class Params:
 	names = ['ielement', 'jelement', 'kelement', 'ielementgp', 'jelementgp', 'kelementgp', 'ang_flag', 'pcn_flag', 'rad_flag', 'tor_flag', 'vdwflag', 'powerm', 'veps', 'vsig', 'paaa', 'pbbb', 'lami', 'alfi', 'powern', 'QL', 'QU', 'DL', 'DU', 'qmin', 'qmax', 'chi', 'dj ', 'dk ', 'dl ', 'esm', 'cmn1', 'cmn2', 'pcmn1', 'pcmn2', 'coulcut', 'polz', 'curl', 'curlcut1', 'curlcut2', 'curl0', 'alpha1', 'bigB1', 'alpha2', 'bigB2', 'alpha3', 'bigB3', 'lambda', 'bigA', 'beta', 'bigr', 'bigd', 'pcos6', 'pcos5', 'pcos4', 'pcos3', 'pcos2', 'pcos1', 'pcos0', 'pcna', 'pcnb', 'pcnc', 'pcnd', 'p6p0', 'p6p1', 'p6p2', 'p6p3', 'p6p4', 'p6p5', 'p6p6', 'ptork1', 'ptork2', 'addrepr', 'addrep', 'pcross']
+	indices = {}
+	def __init__(self):
+		for i,n in enumerate(Params.names):
+			Params.indices[n] = i
 	def __getattr__(self, name):
-		pass
+		index = Params.indices[name]
+		if index<3:
+			return self.elements[index]
+		if index<10:
+			return self.ints[index-3]
+		return self.floats[index-10]
+	#def __setattr__(self, name, value):
+	#	self.floats[Params.indices[name]-10] = value
 
 def read_comb_file(filename):
 	comb_params = []
 	lines = [line for line in open(filename) if not line.strip().startswith('#')]
 	for line in lines:
 		col = line.split()
-		params = utils.Struct()
+		params = Params()
 		params.elements = tuple(col[0:3])
 		params.ints = [int(s) for s in col[3:10]]
 		params.floats = [float(s) for s in col[10:74]]
@@ -38,7 +49,7 @@ def write_comb_file(system, best=False,error=-1):
 		f = open(system.name+'.comb3', 'w')
 
 	for i,t in enumerate(system.comb_params):
-		f.write( ('%-3s'*len(t.elements)) % t.elements )
+		f.write( ('%-3s'*len(t.elements)) % tuple(t.elements) )
 		f.write( ('%-3d'*len(t.ints)) % tuple(t.ints) )
 		f.write( ('%-16e'*len(t.floats)) % tuple(t.floats) )
 		f.write('\n')
@@ -179,8 +190,7 @@ def unpack_params(params, system):
 	for t in system.dihedral_types:
 		t.e = tuple(params[i:i+4])
 		i += 4
-	for t in system.tersoff_params:
-		s = t.e1+t.e2+t.e3+':'
+	for t in system.comb_params:
 		num_params = 64
 		t.floats = params[i:i+num_params]
 		i+=num_params
@@ -190,10 +200,9 @@ def unpack_params(params, system):
 	i_type.charge = -pb_type.charge/2
 
 
-params, bounds, options = read_comb_file('lammps/input.comb3')
-for n, o,b in zip(Params.names[10:], options, bounds):
-	print n, len(o), b
-exit()
+#params, bounds, options = read_comb_file('lammps/input.comb3')
+#for n, o,b in zip(Params.names[10:], options, bounds):
+#	print n, len(o), b
 
 
 I_ = 66
@@ -209,7 +218,7 @@ extra = {
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
 }
 
-system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
+system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_comb')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -266,11 +275,11 @@ pair_coeff * * lj/cut/coul/cut 0.0 1.0
 
 compute atom_pe all pe/atom
 ''').splitlines()
-lmp = lammps('',['-log',system.name+'.log', '-screen','none'])
+lmp = lammps('',['-log',system.name+'.log'])
 for line in commands:
 	lmp.command(line)
 
-system.comb_params = read_comb_file('input.comb3')
+system.comb_params, bounds, options = read_comb_file('input.comb3')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
