@@ -3,84 +3,83 @@ from lammps import lammps
 sys.path.append("/fs/home/jms875/Library/2.0/tools")
 import utils, files, g09
 
-def read_tersoff_file(filename):
-	# format of a single entry (one or more lines):
-	#   element 1, element 2, element 3, 
-	#           m, gamma, lambda3, c, d, costheta0, 
-	#           n, beta, lambda2, B, R, D, lambda1, A
-	tersoff_params = []
-	contents = ''.join([line for line in open(filename) if not line.startswith('#')])
-	lines = contents.split('\n\n') #expects entries to be separated by a blank line
-	for line in lines:
-		line = line.replace('\n','') #an entry can span any number of lines
-		columns = line.split()
-		if len(columns)==17:
-			e1, e2, e3, m, gamma, lambda3, c, d, costheta0, n, beta, lambda2, B, R, D, lambda1, A = [ (float(s) if s[-1].isdigit() else s) for s in columns]
-			tersoff_params.append( utils.Struct(e1=e1, e2=e2, e3=e3, m=m, gamma=gamma, lambda3=lambda3, c=c, d=d, costheta0=costheta0, n=n, beta=beta, lambda2=lambda2, B=B, R=R, D=D, lambda1=lambda1, A=A) )
-	
-	return tersoff_params
+class Params:
+	names = ['ielement', 'jelement', 'kelement', 'ielementgp', 'jelementgp', 'kelementgp', 'ang_flag', 'pcn_flag', 'rad_flag', 'tor_flag', 'vdwflag', 'powerm', 'veps', 'vsig', 'paaa', 'pbbb', 'lami', 'alfi', 'powern', 'QL', 'QU', 'DL', 'DU', 'qmin', 'qmax', 'chi', 'dj ', 'dk ', 'dl ', 'esm', 'cmn1', 'cmn2', 'pcmn1', 'pcmn2', 'coulcut', 'polz', 'curl', 'curlcut1', 'curlcut2', 'curl0', 'alpha1', 'bigB1', 'alpha2', 'bigB2', 'alpha3', 'bigB3', 'lambda', 'bigA', 'beta', 'bigr', 'bigd', 'pcos6', 'pcos5', 'pcos4', 'pcos3', 'pcos2', 'pcos1', 'pcos0', 'pcna', 'pcnb', 'pcnc', 'pcnd', 'p6p0', 'p6p1', 'p6p2', 'p6p3', 'p6p4', 'p6p5', 'p6p6', 'ptork1', 'ptork2', 'addrepr', 'addrep', 'pcross']
+	def __getattr__(self, name):
+		pass
 
-def write_tersoff_file(system, best=False,error=-1):
+def read_comb_file(filename):
+	comb_params = []
+	lines = [line for line in open(filename) if not line.strip().startswith('#')]
+	for line in lines:
+		col = line.split()
+		params = utils.Struct()
+		params.elements = tuple(col[0:3])
+		params.ints = [int(s) for s in col[3:10]]
+		params.floats = [float(s) for s in col[10:74]]
+		comb_params.append( params )
+	
+	bounds = [[f,f] for f in comb_params[0].floats]
+	options = [{} for f in comb_params[0].floats]
+	for t in comb_params:
+		for i,f in enumerate(t.floats):
+			if f<bounds[i][0]: bounds[i][0] = f
+			if f>bounds[i][1]: bounds[i][1] = f
+			options[i][f]=True
+	options = [o.keys() for o in options]
+	
+	return comb_params, bounds, options
+
+def write_comb_file(system, best=False,error=-1):
 	if best:
-		f = open(system.name+'_best.tersoff', 'w')
+		f = open(system.name+'_best.comb3', 'w')
 		f.write('# Error: ' + str(error)+'\n')
 	else:
-		f = open(system.name+'.tersoff', 'w')
+		f = open(system.name+'.comb3', 'w')
 
-	pb_i_i = [t for t in system.tersoff_params if (t.e1,t.e2,t.e3)==('Pb','I','I')][0]
-	for i,t in enumerate(system.tersoff_params):
-		if (t.e1,t.e2,t.e3)==('I','Pb','Pb') and False:
-			n = t
-			t = pb_i_i
-			f.write(('%-2s '*3+('%12.6g '*6)+'\n         '+('%12.6g '*8)+'\n\n') % (n.e1, n.e2, n.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
-		else:
-			f.write(('%-2s '*3+('%12.6g '*6)+'\n         '+('%12.6g '*8)+'\n\n') % (t.e1, t.e2, t.e3, t.m, t.gamma, t.lambda3, t.c, t.d, t.costheta0, t.n, t.beta, t.lambda2, t.B, t.R, t.D, t.lambda1, t.A))
+	for i,t in enumerate(system.comb_params):
+		f.write( ('%-3s'*len(t.elements)) % t.elements )
+		f.write( ('%-3d'*len(t.ints)) % tuple(t.ints) )
+		f.write( ('%-16e'*len(t.floats)) % tuple(t.floats) )
+		f.write('\n')
 	f.close()
 
 def set_lammps_parameters(system):
-	write_tersoff_file(system)
-	lmp.command('pair_coeff * * tersoff '+system.name+'.tersoff Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command?
+	write_comb_file(system)
+	lmp.command('pair_coeff * * comb3 '+system.name+'.comb3 Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the comb3 file to disk?
 	
 	for t in system.atom_types:
-		if not t.written_to_lammps:
-			t.written_to_lammps = True
-			#if hasattr(t,'vdw_e'):
-			#	lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
-			#	lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
+		pass
+		#if hasattr(t,'vdw_e'):
+		#	lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
+		#	lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
 	for t in system.bond_types:
-		if not t.written_to_lammps:
-			t.written_to_lammps = True
-			lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
+		lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
 	for t in system.angle_types:
-		if not t.written_to_lammps:
-			t.written_to_lammps = True
-			lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
+		lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
 	for t in system.dihedral_types:
-		if not t.written_to_lammps:
-			t.written_to_lammps = True
-			lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
+		lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
-	for t in system.tersoff_params:
-		try:
-			powermint = int(t.m)
-			assert t.c >= 0.0
-			assert t.d >= 0.0
-			assert t.n >= 0.0
-			assert t.beta >= 0.0
-			assert t.lambda2 >= 0.0
-			assert t.B >= 0.0
-			assert t.R >= 0.0
-			assert t.D >= 0.0
-			assert t.D <= t.R
-			assert t.lambda1 >= 0.0
-			assert t.A >= 0.0
-			assert t.m - powermint == 0.0
-			assert (powermint == 3 or powermint == 1)
-			assert t.gamma >= 0.0
-		except AssertionError:
-			print 'Bad Tersoff parameters'
+	'''
+	for t in system.comb_params:
+		if t.lambda < 0.0 or t.powern < 0.0 or 
+		t.beta < 0.0 or t.alpha1 < 0.0 or 
+		t.bigB1< 0.0 or t.bigA< 0.0 or 
+		t.bigB2< 0.0 or t.alpha2 <0.0 or
+		t.bigB3< 0.0 or t.alpha3 <0.0 or
+		t.bigr < 0.0 or t.bigd < 0.0 or
+		t.bigd > t.bigr or
+		t.powerm - t.powermint != 0.0 or
+		t.addrepr < 0.0 or t.powermint < 1.0 or
+		t.QL > 0.0 or t.QU < 0.0 or 
+		t.DL < 0.0 or t.DU > 0.0 or
+		t.pcross < 0.0 or 
+		t.esm < 0.0 or t.veps < 0.0 or 
+		t.vsig < 0.0 or t.vdwflag < 0.0:
+			print 'Invalid COMB3 parameters: skipping evaluation'
 			return 1e10
+	'''
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
@@ -148,16 +147,11 @@ def pack_params(system):
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
 		bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
-	for t in system.tersoff_params:
-		s = t.e1+t.e2+t.e3+':'
-		if s=='PbII:' or s=='IPbPb:':
-			names += [s+'c', s+'costheta0', s+'beta', s+'lambda2', s+'B', s+'lambda1', s+'A', s+'R', s+'D']
-			params += [t.c, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.R, t.D]
-			bounds += [(10,1e4), (-0.05,0.05), (0,1), (1,3), (1,1e6), (1,5), (1,1e6), (2.5,3.5), (0.1,0.5)]
-		if s=='IPbI:':
-			names += [s+'R']
-			params += [t.R]
-			bounds += [(5.5,10.0)]
+	for t in system.comb_params:
+		s = t.ielement+t.jelement+t.kelement+':'
+		names += ['f' for f in t.floats]
+		params += t.floats
+		bounds += [(f*0.5, f*1.5) for f in t.floats]
 
 	if len(params)!=len(bounds) or len(params)!=len(names):
 		print 'There are %d parameters, but %d bounds and %d names!' % (len(params), len(bounds), len(names))
@@ -187,19 +181,19 @@ def unpack_params(params, system):
 		i += 4
 	for t in system.tersoff_params:
 		s = t.e1+t.e2+t.e3+':'
-		num_params = 0
-		if s=='PbII:' or s=='IPbPb:':
-			num_params = 9
-			t.c, t.costheta0, t.beta, t.lambda2, t.B, t.lambda1, t.A, t.R, t.D = params[i:i+num_params]
-		if s=='IPbI:':
-			num_params = 1
-			t.R = params[i]
+		num_params = 64
+		t.floats = params[i:i+num_params]
 		i+=num_params
-	
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
 	i_type = [t for t in system.atom_types if t.element==53][0]
 	i_type.charge = -pb_type.charge/2
+
+
+params, bounds, options = read_comb_file('lammps/input.comb3')
+for n, o,b in zip(Params.names[10:], options, bounds):
+	print n, len(o), b
+exit()
 
 
 I_ = 66
@@ -259,7 +253,7 @@ files.write_lammps_data(system)
 
 commands = ('''units real
 atom_style full
-pair_style hybrid/overlay lj/cut/coul/cut 100.0 tersoff
+pair_style hybrid/overlay lj/cut/coul/cut 100.0 comb3 polar_off
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
@@ -276,7 +270,7 @@ lmp = lammps('',['-log',system.name+'.log', '-screen','none'])
 for line in commands:
 	lmp.command(line)
 
-system.tersoff_params = read_tersoff_file('input.tersoff')
+system.comb_params = read_comb_file('input.comb3')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
@@ -349,7 +343,7 @@ def stochastic(use_gradient=True):
 			for n,x in zip(names,best_min.x):
 				print '%-15s %-15g' % (n, x)
 			unpack_params(best_min.x, system)
-			write_tersoff_file(system,best=True,error=best_min.fun)
+			write_comb_file(system,best=True,error=best_min.fun)
 			print 'Error = %.4g' % best_min.fun
 	return best_min
 
