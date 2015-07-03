@@ -291,7 +291,7 @@ def calculate_error_from_list(params):
 	
 	return error
 
-initial_params, bounds, names = pack_params(system)
+initial_params, _, names = pack_params(system)
 
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
