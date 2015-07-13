@@ -99,9 +99,9 @@ def read_reax_file(filename):
 
 def write_reax_file(system, best=False):
 	if best:
-		f = open(system.name+'_best.reaxff', 'w')
+		f = open(system.name+'_best.reax', 'w')
 	else:
-		f = open(system.name+'.reaxff', 'w')
+		f = open(system.name+'.reax', 'w')
 
 	# For readibility
 	delim = '   !   '
@@ -152,10 +152,9 @@ def write_reax_file(system, best=False):
 	f.close()
 
 
-# TODO: correct lammps commands
 def set_lammps_parameters(system):
 	write_reax_file(system)
-	lmp.command('pair_coeff * * reax3 '+system.name+'.reax3 Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	lmp.command('pair_coeff * * reax/c '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
 	
 	for t in system.atom_types:
 		pass
@@ -351,10 +350,10 @@ def unpack_params(params, system):
 				i += 1
 
 	for thbp_iter in system.reax_params.number_threebody:
-    	for param_iter,b in enumerate(include7):
-    		if b:
-    			system.reax_params.thbps[thbp_iter][param_iter] = params[i]
-				i += 1
+	    for param_iter,b in enumerate(include7):
+	        if b:
+	            system.reax_params.thbps[thbp_iter][param_iter] = params[i]
+	            i += 1
 		
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
@@ -380,7 +379,7 @@ extra = {
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
 }
 
-system = utils.System(box_size=[20, 20, 20], name='test_reaxff')
+system = utils.System(box_size=[20, 20, 20], name='test_reax')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -422,27 +421,28 @@ for element_string, molecules in system.molecules_by_elements.iteritems():
 os.chdir('lammps')
 files.write_lammps_data(system)
 
-commands = ('''units metal
+# TODO: not recognizing 'reax/c' ? 
+# Pb I I
+# LAMMPS (15 May 2015)
+# ERROR: Unknown pair style (../force.cpp:176)
+
+commands = ('''units real
 atom_style full
-pair_style hybrid/overlay lj/cut/coul/cut 100.0 reax3 polar_off
+pair_style reax/c NULL
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
-special_bonds lj/coul 0.0 0.0 0.5
 
 boundary f f f
 read_data	'''+system.name+'''.data
 
-pair_coeff * * lj/cut/coul/cut 0.0 1.0
-
 compute atom_pe all pe/atom
-fix 1 all qeq/reax 10 0.0001
 ''').splitlines()
 lmp = lammps('',['-log',system.name+'.log'])
 for line in commands:
 	lmp.command(line)
 
-system.reax_params = read_reax_file('input.reax3')
+system.reax_params = read_reax_file('../input.reax')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
@@ -484,6 +484,8 @@ initial_params, names = pack_params(system)
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
 
+
+#TODO : bounds not initialized
 def stochastic(use_gradient=True):
 	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 	print 'Error: %.4g' % best_min.fun
@@ -540,7 +542,7 @@ def stochastic(use_gradient=True):
 			for n,x in zip(names,best_min.x):
 				print '%-15s %-15g' % (n, x)
 			unpack_params(best_min.x, system)
-			write_reax_file(system,best=True,error=best_min.fun)
+			write_reax_file(system,best=True)
 			print 'Error = %.4g' % best_min.fun
 	return best_min
 
