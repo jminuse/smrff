@@ -8,12 +8,24 @@ class Reax_params:
 	        alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
 	        r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
 	        p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
+	atom_types_names=[['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e'],['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond'],['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****'],['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']]
+	
 	bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
 	            p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
+	bond_types_names=[['A1','A2','De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1'],['p_be2','p_bo3','p_bo4','*****','p_bo1','p_bo2','ovc','*****']]
+
 	offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
+	offdiags_names=['A1','A2','D','r_vdw','alpha','r_s','r_p','r_pp','*lgcij*']
+	
 	three_body_c='''A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4'''
+	three_body_names=['A1','A2','A3','theta_00','p_val1','p_val2','p_coa1','p_val7','p_pen1','p_val4']
+
 	torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
+	torsional_names=['A1','A2','A3','A4','V1','V2','V3','p_tor1','p_cot1','*****','*****']
+	
 	hydrogen_c = '''A1  A2  A3   r0_hb   p_hb1   p_hb2   p_hb3'''
+	hydrogen_names=['A1','A2','A3','r0_hb','p_hb1','p_hb2','p_hb3']
+
 	first_line_comment="Reactive MD-force field for ..."
 	gen_p_comments=[]
 
@@ -21,7 +33,7 @@ class Reax_params:
 	atom_types=[]
 	bonds=[]
 	offdiags=[]
-	thbp=[]
+	thbpss=[]
 	torsional=[]
 	hydrogen=[]
 
@@ -71,7 +83,7 @@ def read_reax_file(filename):
 	reax.number_threebody = int(re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline()).group(1))
 	for i in range(reax.number_threebody):
 		col=f.readline().split()
-		reax.thbp.append(col[:3] + [float(s) for s in col[3:]])
+		reax.thbps.append(col[:3] + [float(s) for s in col[3:]])
 		
 	reax.number_torsional = int(re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline()).group(1))
 	for i in range(reax.number_torsional):
@@ -91,51 +103,56 @@ def write_reax_file(system, best=False):
 	else:
 		f = open(system.name+'.reaxff', 'w')
 
+	# For readibility
 	delim = '   !   '
 	s = "     "
-	f.write(system.reax_params.first_line_comment)
+	rp=system.reax_params
+
+	f.write(rp.first_line_comment)
 	
 	# Print Gerenal Parameters:
-	f.write('    ' + str(system.reax_params.number_of_gen_params) + delim + 'Number of general parameters  \n')
-	for i in range(system.reax_params.number_of_gen_params):
-		f.write(s + str(system.reax_params.gen_p[i]) + delim + system.reax_params.gen_p_comments[i] + '  \n')
+	f.write('    ' + str(rp.number_of_gen_params) + delim + 'Number of general parameters  \n')
+	for i in range(rp.number_of_gen_params):
+		f.write(s + str(rp.gen_p[i]) + delim + rp.gen_p_comments[i] + '  \n')
 
 	# Print atom types:
-	f.write(str(system.reax_params.number_atoms) + delim + system.reax_params.atom_types_c + '  \n')
-	for i in range(system.reax_params.number_atoms):
-		f.write(system.reax_params.atom_types[i][0][0] + s + str(system.reax_params.atom_types[i][0][1:])[1:-1].replace(',','  ') +'  \n')
-		f.write(s + str(system.reax_params.atom_types[i][1])[1:-1].replace(',','  ') +'  \n')
-		f.write(s + str(system.reax_params.atom_types[i][2])[1:-1].replace(',','  ') +'  \n')
-		f.write(s + str(system.reax_params.atom_types[i][3])[1:-1].replace(',','  ') +'  \n')
+	f.write(str(rp.number_atoms) + delim + rp.atom_types_c + '  \n')
+	for i in range(rp.number_atoms):
+		f.write(rp.atom_types[i][0][0] + s + str(rp.atom_types[i][0][1:])[1:-1].replace(',','  ') +'  \n')
+		f.write(s + str(rp.atom_types[i][1])[1:-1].replace(',','  ') +'  \n')
+		f.write(s + str(rp.atom_types[i][2])[1:-1].replace(',','  ') +'  \n')
+		f.write(s + str(rp.atom_types[i][3])[1:-1].replace(',','  ') +'  \n')
 
 	# Print bond types:
-	f.write(str(system.reax_params.number_bonds) + delim + system.reax_params.bond_types_c + '  \n')
-	for i in range(system.reax_params.number_bonds):
-		f.write(system.reax_params.bonds[i][0][0] + s + system.reax_params.bonds[i][0][1] + s + str(system.reax_params.bonds[i][0][2:])[1:-1].replace(',','  ') +'  \n')
-		f.write('          ' + str(system.reax_params.bonds[i][1])[1:-1].replace(',','  ') + '  \n')
+	f.write(str(rp.number_bonds) + delim + rp.bond_types_c + '  \n')
+	for i in range(rp.number_bonds):
+		f.write(rp.bonds[i][0][0] + s + rp.bonds[i][0][1] + s + str(rp.bonds[i][0][2:])[1:-1].replace(',','  ') +'  \n')
+		f.write('          ' + str(rp.bonds[i][1])[1:-1].replace(',','  ') + '  \n')
 	
 	# Print Off-Diagonal Terms:
-	f.write(str(system.reax_params.number_offdiags) + delim + system.reax_params.offdiags_c + '  \n')
-	for i in range(system.reax_params.number_offdiags):
-		f.write(system.reax_params.offdiags[i][0] + s + system.reax_params.offdiags[i][1] + s + str(system.reax_params.offdiags[i][2:])[1:-1].replace(',','  ') + '  \n')
+	f.write(str(rp.number_offdiags) + delim + rp.offdiags_c + '  \n')
+	for i in range(rp.number_offdiags):
+		f.write(rp.offdiags[i][0] + s + rp.offdiags[i][1] + s + str(rp.offdiags[i][2:])[1:-1].replace(',','  ') + '  \n')
 
 	# Print Three-Body Parameters:
-	f.write(str(system.reax_params.number_threebody) + delim + system.reax_params.three_body_c + '  \n')
-	for i in range(system.reax_params.number_threebody):
-		f.write(system.reax_params.thbp[i][0] + s + system.reax_params.thbp[i][1] + s + system.reax_params.thbp[i][2] + s + str(system.reax_params.thbp[i][3:])[1:-1].replace(',','  ') + '  \n')
+	f.write(str(rp.number_threebody) + delim + rp.three_body_c + '  \n')
+	for i in range(rp.number_threebody):
+		f.write(rp.thbp[i][0] + s + rp.thbp[i][1] + s + rp.thbp[i][2] + s + str(rp.thbp[i][3:])[1:-1].replace(',','  ') + '  \n')
 
 	# Print Torsional terms:
-	f.write(str(system.reax_params.number_torsional) + delim + system.reax_params.torsional_c + '  \n')
-	for i in range(system.reax_params.number_torsional):
-		f.write(system.reax_params.torsional[i][0] + s + system.reax_params.torsional[i][1] + s + system.reax_params.torsional[i][2] + s + system.reax_params.torsional[i][3] + s + str(system.reax_params.torsional[i][4:])[1:-1].replace(',','  ') + '  \n')
+	f.write(str(rp.number_torsional) + delim + rp.torsional_c + '  \n')
+	for i in range(rp.number_torsional):
+		f.write(rp.torsional[i][0] + s + rp.torsional[i][1] + s + rp.torsional[i][2] + s + rp.torsional[i][3] + s + str(rp.torsional[i][4:])[1:-1].replace(',','  ') + '  \n')
 
 	# Print Hydrogen Bonds:
-	f.write(str(system.reax_params.number_hydrogen) + delim + system.reax_params.hydrogen_c + '  \n')
-	for i in range(system.reax_params.number_hydrogen):
-		f.write(system.reax_params.hydrogen[i][0] + s + system.reax_params.hydrogen[i][1] + s + system.reax_params.hydrogen[i][2] + s + str(system.reax_params.hydrogen[i][3:])[1:-1].replace(',','  ') + '  \n')
+	f.write(str(rp.number_hydrogen) + delim + rp.hydrogen_c + '  \n')
+	for i in range(rp.number_hydrogen):
+		f.write(rp.hydrogen[i][0] + s + rp.hydrogen[i][1] + s + rp.hydrogen[i][2] + s + str(rp.hydrogen[i][3:])[1:-1].replace(',','  ') + '  \n')
 
 	f.close()
 
+
+# TODO: correct lammps commands
 def set_lammps_parameters(system):
 	write_reax_file(system)
 	lmp.command('pair_coeff * * reax3 '+system.name+'.reax3 Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
@@ -197,52 +214,100 @@ def calculate_error(system):
 	return error
 
 def pack_params(system):
-	params, bounds, names = [], [], []
-	for t in system.atom_types:
-		if False:
-			params += [t.vdw_e, t.vdw_r]
-			bounds += [(0.01,0.1), (2.5,4.0)]
-			names += ['%d:vdw_e'%t.element, '%d:vdw_r'%t.element]
-			if t.element==53:
-				pass #defined by Pb
-			else:
-				params += [t.charge]
-				bounds += [(0.0,2)]
-				names += ['%d:charge'%t.element]
+	params, names = [], [], []
+	# for t in system.atom_types:
+	# 	if False:
+	# 		params += [t.vdw_e, t.vdw_r]
+	# 		bounds += [(0.01,0.1), (2.5,4.0)]
+	# 		names += ['%d:vdw_e'%t.element, '%d:vdw_r'%t.element]
+	# 		if t.element==53:
+	# 			pass #defined by Pb
+	# 		else:
+	# 			params += [t.charge]
+	# 			bounds += [(0.0,2)]
+	# 			names += ['%d:charge'%t.element]
 	for t in system.bond_types:
 		params += [t.e, t.r]
-		bounds += [(0,100), (0.9,3.0)]
+		# bounds += [(0,100), (0.9,3.0)]
 	for t in system.angle_types:
 		params += [t.e, t.angle]
-		bounds += [(0,100), (0,180)]
+		# bounds += [(0,100), (0,180)]
 	for t in system.dihedral_types:
 		if len(t.e)==3:
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
-		bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
-	for t in system.reax_params:
-		s = t.ielement+t.jelement+t.kelement+':'
-		names += ['f' for f in t.floats]
-		params += t.floats
-		bounds += [(f*0.5, f*1.5) for f in t.floats]
+		# bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
 
-	if len(params)!=len(bounds) or len(params)!=len(names):
-		print 'There are %d parameters, but %d bounds and %d names!' % (len(params), len(bounds), len(names))
-		exit()
+	for atom in system.reax_params.atom_types:
+		names_list = system.reax_params.atom_types_names
+		atom_name = atom[0][0]
+		for i,b in enumerate(include0):
+			if b:
+				params.append(atom[0][i])
+				names.append(atom_name + '.' + names_list[0][i])
 		
-	return params, bounds, names
+		for i,b in enumerate(include1):
+			if b:
+				params.append(atom[1][i])
+				names.append(atom_name + '.' + names_list[1][i])
+
+		for i,b in enumerate(include2):
+			if b:
+				params.append(atom[2][i])
+				names.append(atom_name + '.' + names_list[2][i])
+
+		for i,b in enumerate(include3):
+			if b:
+				params.append(atom[3][i])
+				names.append(atom_name + '.' + names_list[3][i])
+
+	for bond in system.reax_params.bonds:
+		names_list = system.reax_params.bond_types_names
+		bondname='tbp(' + bond[0][0] + ',' + bond[0][1] + ').'
+		for i,b in enumerate(include4):
+			if b:
+				params.append(bond[0][i])
+				names.append(bondname+names_list[0][i])
+
+		for i,b in enumerate(include5):
+			if b:
+				params.append(bond[1][i])
+				names.append(bondname+names_list[1][i])
+
+	for offdiag in system.reax_params.offdiags:
+		names_list=system.reax_params.offdiags_names
+		offdname='offd('+offdiag[0]+','+offdiag[1]+').'
+		for i,b in enumerate(include6):
+			if b:
+				params.append(offdiag[i])
+				names.append(offdname+)
+
+    for thbp in system.reax_params.thbp:
+    	names_list = system.reax_params.three_body_names
+    	thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+')'
+    	for i,b in enumerate(include7):
+    		if b:
+    			params.append(thbp[i])
+    			names.append(thbp[i])
+
+	if len(params)!=len(names):
+		print 'There are %d parameters, but %d names!' % (len(params), len(names))
+		raise SystemExit
+		
+	# return params, bounds, names
+	return params, names
 
 def unpack_params(params, system):
 	i = 0
-	for t in system.atom_types:
-		if False:
-			t.vdw_e, t.vdw_r = params[i], params[i+1]
-			i += 2
-			if t.element==53:
-				pass #defined by Pb
-			else:
-				t.charge = params[i]
-				i += 1
+	# for t in system.atom_types:
+	# 	if False:
+	# 		t.vdw_e, t.vdw_r = params[i], params[i+1]
+	# 		i += 2
+	# 		if t.element==53:
+	# 			pass #defined by Pb
+	# 		else:
+	# 			t.charge = params[i]
+	# 			i += 1
 	for t in system.bond_types:
 		t.e, t.r = params[i], params[i+1]
 		i += 2
@@ -353,6 +418,31 @@ def calculate_error_from_list(params):
 	error = calculate_error(system)
 	
 	return error
+
+# Atom Parameters:
+#          ['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e']
+include0 = [     0,    1,        1,     1,      1,        1,      1,     1,          1]
+#          ['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond']
+include1 = [ 1,      1,        1,            1,        0,      1,    1,    1]
+#          ['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****']
+include2 = [ 1,        1,      0,      1,        1,        1,        0,      0]
+#          ['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']
+include3 = [ 1,        1,       0,      1,            1,       1,       1,       1]
+
+# Bond Parameters:
+#          ['A1','A2','De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1']
+include4 = [ 0,   0,   1,     1,     1,      1,      1,      1,       1,      1]
+#          ['p_be2','p_bo3','p_bo4','*****','p_bo1','p_bo2','ovc','*****']
+include5 = [ 1,      1,      1,      0,      1,      1,      1,    0]
+
+# Off-Diagonal Parameters:
+#          ['A1','A2','D','r_vdw','alpha','r_s','r_p','r_pp','*lgcij*']
+include6 = [ 0,   0,   1,  1,      1,      1,    1,    1,     1]
+
+# Three-Body Parameters:
+#          ['A1','A2','A3','theta_00','p_val1','p_val2','p_coa1','p_val7','p_pen1','p_val4']
+include7 = [ 0,   0,   0,   1,         1,       1,       1,       1,       1,       1]
+
 
 initial_params, _, names = pack_params(system)
 
