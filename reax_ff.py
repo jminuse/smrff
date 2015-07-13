@@ -33,7 +33,7 @@ class Reax_params:
 	atom_types=[]
 	bonds=[]
 	offdiags=[]
-	thbpss=[]
+	thbps=[]
 	torsional=[]
 	hydrogen=[]
 
@@ -214,7 +214,7 @@ def calculate_error(system):
 	return error
 
 def pack_params(system):
-	params, names = [], [], []
+	params, names = [], []
 	# for t in system.atom_types:
 	# 	if False:
 	# 		params += [t.vdw_e, t.vdw_r]
@@ -280,15 +280,15 @@ def pack_params(system):
 		for i,b in enumerate(include6):
 			if b:
 				params.append(offdiag[i])
-				names.append(offdname+)
+				names.append(offdname+names_list[i])
 
-    for thbp in system.reax_params.thbp:
-    	names_list = system.reax_params.three_body_names
-    	thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+')'
+	for thbp in system.reax_params.thbps:
+		names_list = system.reax_params.three_body_names
+		thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+')'
     	for i,b in enumerate(include7):
     		if b:
     			params.append(thbp[i])
-    			names.append(thbp[i])
+    			names.append(thbpname + names_list[i])
 
 	if len(params)!=len(names):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
@@ -317,10 +317,45 @@ def unpack_params(params, system):
 	for t in system.dihedral_types:
 		t.e = tuple(params[i:i+4])
 		i += 4
-	for t in system.reax_params:
-		num_params = 64
-		t.floats = params[i:i+num_params]
-		i+=num_params
+	for atom_iter in range(system.reax_params.num_atom_types):
+		for param_iter,b in enumerate(include0):
+			if b:
+				system.reax_params.atom_types[atom_iter][0][param_iter] = params[i]
+				i += 1
+		for param_iter,b in enumerate(include1):
+			if b:
+				system.reax_params.atom_types[atom_iter][1][param_iter] = params[i]
+				i += 1
+		for param_iter,b in enumerate(include2):
+			if b:
+				system.reax_params.atom_types[atom_iter][2][param_iter] = params[i]
+				i += 1
+		for param_iter,b in enumerate(include3):
+			if b:
+				system.reax_params.atom_types[atom_iter][3][param_iter] = params[i]
+				i += 1
+	for bond_iter in system.reax_params.number_bonds:
+		for param_iter,b in enumerate(include4):
+			if b:
+				system.reax_params.bonds[bond_iter][0][param_iter] = params[i]
+				i += 1
+		for param_iter,b in enumerate(include5):
+			if b:
+				system.reax_params.bonds[bond_iter][1][param_iter] = params[i]
+				i += 1
+
+	for offdiag_iter in system.reax_params.number_offdiags:
+		for param_iter,b in enumerate(include6):
+			if b:
+				system.reax_params.offdiags[offdiag_iter][param_iter] = params[i]
+				i += 1
+
+	for thbp_iter in system.reax_params.number_threebody:
+    	for param_iter,b in enumerate(include7):
+    		if b:
+    			system.reax_params.thbps[thbp_iter][param_iter] = params[i]
+				i += 1
+		
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
 	i_type = [t for t in system.atom_types if t.element==53][0]
@@ -345,7 +380,7 @@ extra = {
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
 }
 
-system = utils.System(box_size=[20, 20, 20], name='test_reax')
+system = utils.System(box_size=[20, 20, 20], name='test_reaxff')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -444,7 +479,7 @@ include6 = [ 0,   0,   1,  1,      1,      1,    1,    1,     1]
 include7 = [ 0,   0,   0,   1,         1,       1,       1,       1,       1,       1]
 
 
-initial_params, _, names = pack_params(system)
+initial_params, names = pack_params(system)
 
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
