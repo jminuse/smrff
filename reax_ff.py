@@ -42,7 +42,7 @@ def read_reax_file(filename):
 	for i in range(reax.number_of_gen_params):
 		m=re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline())
 		reax.gen_p.append( float(  m.group(1) ) )
-		reax.gen_p_comments.append(m.group(2))
+		reax.gen_p_comments.append(m.group(2).strip())
 
 	reax.number_atoms = int(re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline()).group(1))
 	f.readline(); f.readline(); f.readline()
@@ -118,7 +118,7 @@ def write_reax_file(system, best=False):
 	# Print General Parameters:
 	f.write(' ' + str(rp.number_of_gen_params) + '       ! ' + 'Number of general parameters  \n')
 	for i in range(rp.number_of_gen_params):
-		f.write(trim_spaces(rp.gen_p[i],10) + delim + rp.gen_p_comments[i])
+		f.write(trim_spaces(rp.gen_p[i],10) + delim + rp.gen_p_comments[i] +'  \n')
 
 	# Print atom types:
 	f.write(trim_spaces(rp.number_atoms,3,1) + '    ! ' + rp.atom_types_c + '  \n')
