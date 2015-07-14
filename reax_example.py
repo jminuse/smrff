@@ -8,16 +8,16 @@ os.chdir('lammps')
 commands = ('''units		real
 
 atom_style	full
-read_data	tatb.data
+read_data	example.data
 
 pair_style      reax/c NULL
-pair_coeff      * * ../input.reax Pb I
+pair_coeff      * * test_reax.reax Pb I
 
 fix     1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 
 run		1
 ''').splitlines()
-lmp = lammps('',['-log', 'tatb.log'])
+lmp = lammps('',['-log', 'example.log'])
 for line in commands:
 	lmp.command(line)
 
