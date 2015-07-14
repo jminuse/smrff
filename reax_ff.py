@@ -151,8 +151,8 @@ def write_reax_file(system, best=False):
 
 def set_lammps_parameters(system):
 	write_reax_file(system)
-	lmp.command('pair_coeff * * '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
-
+	lmp.command('pair_coeff * * '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	
 	for t in system.atom_types:
 		pass
 		#if hasattr(t,'vdw_e'):
@@ -415,6 +415,7 @@ boundary f f f
 read_data	'''+system.name+'''.data
 
 compute atom_pe all pe/atom
+pair_coeff * * ../input.reax Pb I '''+(' NULL'*(len(system.atom_types)-2))+'''
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 ''').splitlines()
 lmp = lammps('',['-log',system.name+'.log'])
@@ -422,8 +423,6 @@ for line in commands:
 	lmp.command(line)
 
 system.reax_params = read_reax_file('../input.reax')
-
-print '!'
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)

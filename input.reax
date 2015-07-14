@@ -39,7 +39,7 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
     5.0000 !Molecular energy (not used)                                         
     0.0000 !Molecular energy (not used)                                         
     2.6962 !Valency angle conjugation parameter                                 
-  5    ! Nr of atoms; cov.r; valency;a.m;Rvdw;Evdw;gammaEEM;cov.r2;#            
+  4    ! Nr of atoms; cov.r; valency;a.m;Rvdw;Evdw;gammaEEM;cov.r2;#            
             alfa;gammavdW;valency;Eunder;Eover;chiEEM;etaEEM;n.u.               
             cov r3;Elp;Heat inc.;n.u.;n.u.;n.u.;n.u.                            
             ov/un;val1;n.u.;val3,vval4                                          
@@ -59,10 +59,6 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
      11.5345  10.1330   1.0000   0.0000   0.0000   9.9614   6.5316   0.0000
      -1.0000   3.5750 143.1770   6.2293   5.2294   0.1542   0.8563   0.0000
     -10.2080   2.9867   1.0338   6.2998   2.5791   0.0000   0.0000   0.0000
- C    1.3817   4.0000  12.0000   1.8903   0.1838   0.9000   1.1341   4.0000     
-      9.7559   2.1346   4.0000  34.9350  79.5548   5.9666   7.0000   0.0000     
-      1.2114   0.0000 202.6057   8.9539  34.9289  13.5366   0.8563   0.0000     
-     -2.8983   2.5000   1.0564   4.0000   2.9663   0.0000   0.0000   0.0000 
  10      ! Nr of bonds; Edis1;LPpen;n.u.;pbe1;pbo5;13corr;pbo6                  
                          pbe2;pbo3;pbo4;Etrip;pbo1;pbo2;ovcorr                  
   1  1 153.3934   0.0000   0.0000  -0.4600   0.0000   1.0000   6.0000   0.7300  

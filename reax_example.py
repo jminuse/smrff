@@ -5,16 +5,12 @@ import utils, files, g09
 
 os.chdir('lammps')
 
-commands = ('''
-# ReaxFF potential for TATB system
-# this run is equivalent to reax/in.reax.tatb,
-
-units		real
+commands = ('''units		real
 
 atom_style	charge
 read_data	data.tatb
 
-pair_style      reax/c control.reax_c.tatb
+pair_style      reax/c NULL
 pair_coeff      * * tatb.reax C H O N
 
 compute reax all pair reax/c
@@ -38,25 +34,12 @@ neighbor	2.5 bin
 neigh_modify	delay 0 every 5 check no
 
 fix		1 all nve
-fix             2 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
-fix   		4 all reax/c/bonds 5 bonds.reaxc
+fix     2 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 
 thermo		5
 thermo_style 	custom step temp epair etotal press v_eb v_ea v_elp v_emol v_ev v_epen v_ecoa v_ehb v_et v_eco v_ew v_ep v_efi v_eqeq
 
 timestep	0.0625
-
-#dump		1 all custom 100 dump.reaxc.tatb id type q x y z
-
-#dump		2 all image 5 image.*.jpg type type &
-#		axes yes 0.8 0.02 view 60 -30
-#dump_modify	2 pad 3
-
-#dump		3 all movie 5 movie.mpg type type &
-#		axes yes 0.8 0.02 view 60 -30
-#dump_modify	3 pad 3
-
-fix 		3 all reax/c/species 1 5 5 species.tatb
 
 run		25
 ''').splitlines()
