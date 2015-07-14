@@ -8,23 +8,23 @@ class Reax_params:
 			alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
 			r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
 			p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
-	atom_types_names=[['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e'],['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond'],['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****'],['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']]
+	atom_types_names=[line.split() for line in atom_types_c.splitlines()]
 	
 	bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
 				p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
-	bond_types_names=[['A1','A2','De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1'],['p_be2','p_bo3','p_bo4','*****','p_bo1','p_bo2','ovc','*****']]
+	bond_types_names=[line.split() for line in bond_types_c.splitlines()]
 
 	offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
-	offdiags_names=['A1','A2','D','r_vdw','alpha','r_s','r_p','r_pp','*lgcij*']
+	offdiags_names=offdiags_c.split()
 	
 	three_body_c='''A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4'''
-	three_body_names=['A1','A2','A3','theta_00','p_val1','p_val2','p_coa1','p_val7','p_pen1','p_val4']
+	three_body_names=three_body_c.split()
 
 	torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
-	torsional_names=['A1','A2','A3','A4','V1','V2','V3','p_tor1','p_cot1','*****','*****']
+	torsional_names=torsional_c.split()
 	
 	hydrogen_c = '''A1  A2  A3   r0_hb   p_hb1   p_hb2   p_hb3'''
-	hydrogen_names=['A1','A2','A3','r0_hb','p_hb1','p_hb2','p_hb3']
+	hydrogen_names=hydrogen_c.split()
 
 	first_line_comment="Reactive MD-force field for ..."
 	gen_p_comments=[]
@@ -137,7 +137,7 @@ def write_reax_file(system, best=False):
 	# Print Three-Body Parameters:
 	f.write(str(rp.number_threebody) + delim + rp.three_body_c + '  \n')
 	for i in range(rp.number_threebody):
-		f.write(rp.thbp[i][0] + s + rp.thbp[i][1] + s + rp.thbp[i][2] + s + str(rp.thbp[i][3:])[1:-1].replace(',','  ') + '  \n')
+		f.write(rp.thbps[i][0] + s + rp.thbps[i][1] + s + rp.thbps[i][2] + s + str(rp.thbps[i][3:])[1:-1].replace(',','  ') + '  \n')
 
 	# Print Torsional terms:
 	f.write(str(rp.number_torsional) + delim + rp.torsional_c + '  \n')
@@ -354,11 +354,6 @@ def unpack_params(params, system):
 	        if b:
 				system.reax_params.thbps[thbp_iter][param_iter] = params[i]
 				i += 1
-		
-
-	pb_type = [t for t in system.atom_types if t.element==82][0]
-	i_type = [t for t in system.atom_types if t.element==53][0]
-	i_type.charge = -pb_type.charge/2
 
 
 I_ = 66
