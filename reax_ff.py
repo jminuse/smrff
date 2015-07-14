@@ -316,7 +316,7 @@ def unpack_params(params, system):
 	for t in system.dihedral_types:
 		t.e = tuple(params[i:i+4])
 		i += 4
-	for atom_iter in range(system.reax_params.num_atom_types):
+	for atom_iter in range( len(system.reax_params.atom_types) ):
 		for param_iter,b in enumerate(include0):
 			if b:
 				system.reax_params.atom_types[atom_iter][0][param_iter] = params[i]
@@ -333,7 +333,7 @@ def unpack_params(params, system):
 			if b:
 				system.reax_params.atom_types[atom_iter][3][param_iter] = params[i]
 				i += 1
-	for bond_iter in system.reax_params.number_bonds:
+	for bond_iter in range(system.reax_params.number_bonds):
 		for param_iter,b in enumerate(include4):
 			if b:
 				system.reax_params.bonds[bond_iter][0][param_iter] = params[i]
@@ -343,27 +343,23 @@ def unpack_params(params, system):
 				system.reax_params.bonds[bond_iter][1][param_iter] = params[i]
 				i += 1
 
-	for offdiag_iter in system.reax_params.number_offdiags:
+	for offdiag_iter in range(system.reax_params.number_offdiags):
 		for param_iter,b in enumerate(include6):
 			if b:
 				system.reax_params.offdiags[offdiag_iter][param_iter] = params[i]
 				i += 1
 
-	for thbp_iter in system.reax_params.number_threebody:
+	for thbp_iter in range(system.reax_params.number_threebody):
 	    for param_iter,b in enumerate(include7):
 	        if b:
-	            system.reax_params.thbps[thbp_iter][param_iter] = params[i]
+				print thbp_iter, param_iter, i, len(system.reax_params.thbps), len(system.reax_params.thbps[thbp_iter]), len(params[i])
+				system.reax_params.thbps[thbp_iter][param_iter] = params[i]
 	            i += 1
 		
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
 	i_type = [t for t in system.atom_types if t.element==53][0]
 	i_type.charge = -pb_type.charge/2
-
-
-#params, bounds, options = read_reax_file('lammps/input.reax3')
-#for n, o,b in zip(Params.names[10:], options, bounds):
-#	print n, len(o), b
 
 
 I_ = 66
@@ -472,7 +468,7 @@ include5 = [ 1,      1,      1,      0,      1,      1,      1,    0]
 
 # Off-Diagonal Parameters:
 #          ['A1','A2','D','r_vdw','alpha','r_s','r_p','r_pp','*lgcij*']
-include6 = [ 0,   0,   1,  1,      1,      1,    1,    1,     1]
+include6 = [ 0,   0,   1,  1,      1,      1,    1,    1,     0]
 
 # Three-Body Parameters:
 #          ['A1','A2','A3','theta_00','p_val1','p_val2','p_coa1','p_val7','p_pen1','p_val4']
