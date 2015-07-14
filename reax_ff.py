@@ -110,10 +110,10 @@ def write_reax_file(system, best=False):
 
 	f.write(rp.first_line_comment)
 	
-	# Print Gerenal Parameters:
+	# Print General Parameters:
 	f.write('    ' + str(rp.number_of_gen_params) + delim + 'Number of general parameters  \n')
 	for i in range(rp.number_of_gen_params):
-		f.write(s + str(rp.gen_p[i]) + delim + rp.gen_p_comments[i] + '  \n')
+		f.write(s + str(rp.gen_p[i]) + delim + rp.gen_p_comments[i])
 
 	# Print atom types:
 	f.write(str(rp.number_atoms) + delim + rp.atom_types_c + '  \n')
@@ -140,14 +140,16 @@ def write_reax_file(system, best=False):
 		f.write(rp.thbps[i][0] + s + rp.thbps[i][1] + s + rp.thbps[i][2] + s + str(rp.thbps[i][3:])[1:-1].replace(',','  ') + '  \n')
 
 	# Print Torsional terms:
-	f.write(str(rp.number_torsional) + delim + rp.torsional_c + '  \n')
-	for i in range(rp.number_torsional):
-		f.write(rp.torsional[i][0] + s + rp.torsional[i][1] + s + rp.torsional[i][2] + s + rp.torsional[i][3] + s + str(rp.torsional[i][4:])[1:-1].replace(',','  ') + '  \n')
+	if rp.number_torsional:
+		f.write(str(rp.number_torsional) + delim + rp.torsional_c + '  \n')
+		for i in range(rp.number_torsional):
+			f.write(rp.torsional[i][0] + s + rp.torsional[i][1] + s + rp.torsional[i][2] + s + rp.torsional[i][3] + s + str(rp.torsional[i][4:])[1:-1].replace(',','  ') + '  \n')
 
 	# Print Hydrogen Bonds:
-	f.write(str(rp.number_hydrogen) + delim + rp.hydrogen_c + '  \n')
-	for i in range(rp.number_hydrogen):
-		f.write(rp.hydrogen[i][0] + s + rp.hydrogen[i][1] + s + rp.hydrogen[i][2] + s + str(rp.hydrogen[i][3:])[1:-1].replace(',','  ') + '  \n')
+	if rp.number_hydrogen:
+		f.write(str(rp.number_hydrogen) + delim + rp.hydrogen_c + '  \n')
+		for i in range(rp.number_hydrogen):
+			f.write(rp.hydrogen[i][0] + s + rp.hydrogen[i][1] + s + rp.hydrogen[i][2] + s + str(rp.hydrogen[i][3:])[1:-1].replace(',','  ') + '  \n')
 
 	f.close()
 
