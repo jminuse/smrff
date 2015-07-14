@@ -352,9 +352,8 @@ def unpack_params(params, system):
 	for thbp_iter in range(system.reax_params.number_threebody):
 	    for param_iter,b in enumerate(include7):
 	        if b:
-				print thbp_iter, param_iter, i, len(system.reax_params.thbps), len(system.reax_params.thbps[thbp_iter]), len(params[i])
 				system.reax_params.thbps[thbp_iter][param_iter] = params[i]
-	            i += 1
+				i += 1
 		
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
