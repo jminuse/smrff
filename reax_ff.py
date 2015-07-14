@@ -377,7 +377,7 @@ extra = {
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
 }
 
-system = utils.System(box_size=[20, 20, 20], name='test_reax')
+system = utils.System(box_size=[200, 200, 200], name='test_reax')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -386,7 +386,6 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI2_r8_def2SVP') : continue #for PbI testing
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name, check_convergence=False)
 			#if any([utils.dist(atoms[0], a)>3.5 for a in atoms]) and len(atoms)<6: continue
@@ -401,8 +400,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			system.add(total, count*200.0)
 			count += 1
 
-# system.box_size[0] = count*400+200 #make system big enough to hold all atoms
-system.box_size[0] = 20
+system.box_size[0] = count*400+200 #make system big enough to hold all atoms
 #group molecules by .element_string
 system.molecules_by_elements = {}
 for m in system.molecules:
