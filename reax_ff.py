@@ -5,13 +5,13 @@ import utils, files, g09
 
 class Reax_params:
 	atom_types_c = '''Atom    r_s       valency   mass         r_vdw        epsilon  gamma    r_pi    valency_e    
-	        alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
-	        r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
-	        p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
+			alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
+			r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
+			p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
 	atom_types_names=[['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e'],['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond'],['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****'],['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']]
 	
 	bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
-	            p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
+				p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
 	bond_types_names=[['A1','A2','De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1'],['p_be2','p_bo3','p_bo4','*****','p_bo1','p_bo2','ovc','*****']]
 
 	offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
@@ -284,10 +284,10 @@ def pack_params(system):
 	for thbp in system.reax_params.thbps:
 		names_list = system.reax_params.three_body_names
 		thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+')'
-    	for i,b in enumerate(include7):
-    		if b:
-    			params.append(thbp[i])
-    			names.append(thbpname + names_list[i])
+		for i,b in enumerate(include7):
+			if b:
+				params.append(thbp[i])
+				names.append(thbpname + names_list[i])
 
 	if len(params)!=len(names):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
