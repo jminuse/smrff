@@ -202,8 +202,8 @@ def calculate_error(system):
 			m.lammps_energy -= baseline_energy
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
-			print m.energy, m.lammps_energy
-	exit()
+			#print m.energy, m.lammps_energy
+	#exit()
 	#calculate force error
 	relative_force_error, absolute_force_error = 0.0, 0.0
 	for i,a in enumerate(system.atoms):
@@ -220,7 +220,7 @@ def calculate_error(system):
 
 	error = relative_energy_error + relative_force_error
 	
-	#print absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
+	#print 'Error components:', absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
 	
 	return error
 
@@ -433,7 +433,7 @@ thermo_style custom pe c_test_pe
 pair_coeff * * ../input.reax Pb I '''+(' NULL'*(len(system.atom_types)-2))+'''
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 ''').splitlines()
-lmp = lammps('',['-log',system.name+'.log'])
+lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 for line in commands:
 	lmp.command(line)
 
@@ -451,9 +451,9 @@ def calculate_error_from_list(params):
 
 # Atom Parameters:
 #          ['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e']
-include0 = [     0,    1,        1,     1,      1,        1,      1,     1,          1]
+include0 = [     0,    1,        0,     0,      1,        1,      1,     1,          0]
 #          ['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond']
-include1 = [ 1,      1,        1,            1,        0,      1,    1,    1]
+include1 = [ 1,      1,        1,            1,        0,      1,    1,    0]
 #          ['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****']
 include2 = [ 1,        1,      0,      1,        1,        1,        0,      0]
 #          ['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']
@@ -526,7 +526,7 @@ def stochastic(use_gradient=True):
 		if use_gradient:
 			x, fun, _ = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds)
 			guess = utils.Struct(fun=fun,x=x)
-			print calculate_error_from_list(params), guess.fun, best_min.fun
+			print 'Error', calculate_error_from_list(params), guess.fun, best_min.fun
 		else:
 			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 			print guess.fun, best_min.fun
@@ -571,11 +571,11 @@ def try_params():
 				params.append( new )
 			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 			changed.append( guess.fun != best_min.fun )
-		if any(changed):
-			print names[param_index], 'has an effect'
+		if not any(changed):
+			print names[param_index], 'has no effect'
 	return best_min
 
 #try_params()
 
-stochastic()
+stochastic(True)
 
