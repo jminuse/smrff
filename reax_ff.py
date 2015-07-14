@@ -249,25 +249,26 @@ def pack_params(system):
 	for atom in system.reax_params.atom_types:
 		names_list = system.reax_params.atom_types_names
 		atom_name = atom[0][0]
-		for i,b in enumerate(include0):
-			if b:
-				params.append(atom[0][i])
-				names.append(atom_name + '.' + names_list[0][i])
-		
-		for i,b in enumerate(include1):
-			if b:
-				params.append(atom[1][i])
-				names.append(atom_name + '.' + names_list[1][i])
+		if atom_name == 'Pb' or atom_name == "I":
+			for i,b in enumerate(include0):
+				if b:
+					params.append(atom[0][i])
+					names.append(atom_name + '.' + names_list[0][i])
+			
+			for i,b in enumerate(include1):
+				if b:
+					params.append(atom[1][i])
+					names.append(atom_name + '.' + names_list[1][i])
 
-		for i,b in enumerate(include2):
-			if b:
-				params.append(atom[2][i])
-				names.append(atom_name + '.' + names_list[2][i])
+			for i,b in enumerate(include2):
+				if b:
+					params.append(atom[2][i])
+					names.append(atom_name + '.' + names_list[2][i])
 
-		for i,b in enumerate(include3):
-			if b:
-				params.append(atom[3][i])
-				names.append(atom_name + '.' + names_list[3][i])
+			for i,b in enumerate(include3):
+				if b:
+					params.append(atom[3][i])
+					names.append(atom_name + '.' + names_list[3][i])
 
 	for bond in system.reax_params.bonds:
 		names_list = system.reax_params.bond_types_names
@@ -301,7 +302,7 @@ def pack_params(system):
 	if len(params)!=len(names):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
 		raise SystemExit
-
+	print names
 	return params, names
 
 def unpack_params(params, system):
@@ -325,22 +326,24 @@ def unpack_params(params, system):
 		t.e = tuple(params[i:i+4])
 		i += 4
 	for atom_iter in range( len(system.reax_params.atom_types) ):
-		for param_iter,b in enumerate(include0):
-			if b:
-				system.reax_params.atom_types[atom_iter][0][param_iter] = params[i]
-				i += 1
-		for param_iter,b in enumerate(include1):
-			if b:
-				system.reax_params.atom_types[atom_iter][1][param_iter] = params[i]
-				i += 1
-		for param_iter,b in enumerate(include2):
-			if b:
-				system.reax_params.atom_types[atom_iter][2][param_iter] = params[i]
-				i += 1
-		for param_iter,b in enumerate(include3):
-			if b:
-				system.reax_params.atom_types[atom_iter][3][param_iter] = params[i]
-				i += 1
+		if system.reax_params.atom_types[atom_iter][0][0]=='Pb' or \
+		   system.reax_params.atom_types[atom_iter][0][0]=='I':
+			for param_iter,b in enumerate(include0):
+				if b:
+					system.reax_params.atom_types[atom_iter][0][param_iter] = params[i]
+					i += 1
+			for param_iter,b in enumerate(include1):
+				if b:
+					system.reax_params.atom_types[atom_iter][1][param_iter] = params[i]
+					i += 1
+			for param_iter,b in enumerate(include2):
+				if b:
+					system.reax_params.atom_types[atom_iter][2][param_iter] = params[i]
+					i += 1
+			for param_iter,b in enumerate(include3):
+				if b:
+					system.reax_params.atom_types[atom_iter][3][param_iter] = params[i]
+					i += 1
 	for bond_iter in range(system.reax_params.number_bonds):
 		for param_iter,b in enumerate(include4):
 			if b:
@@ -575,7 +578,7 @@ def try_params():
 			print names[param_index], 'has no effect'
 	return best_min
 
-#try_params()
+# try_params()
 
 stochastic(True)
 
