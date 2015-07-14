@@ -164,7 +164,9 @@ def write_reax_file(system, best=False):
 
 def set_lammps_parameters(system):
 	write_reax_file(system)
+	lmp.command('unfix 1')
 	lmp.command('pair_coeff * * '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 	
 	for t in system.atom_types:
 		pass
@@ -428,6 +430,8 @@ boundary f f f
 read_data	'''+system.name+'''.data
 
 compute atom_pe all pe/atom
+compute		test_pe all reduce sum c_atom_pe
+thermo_style custom pe c_test_pe
 pair_coeff * * ../input.reax Pb I '''+(' NULL'*(len(system.atom_types)-2))+'''
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 ''').splitlines()
