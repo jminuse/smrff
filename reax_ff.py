@@ -8,27 +8,22 @@ class Reax_params:
 			alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
 			r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
 			p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
-	atom_types_names=[line.split() for line in atom_types_c.splitlines()]
-	
 	bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
 				p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
-	bond_types_names=[line.split() for line in bond_types_c.splitlines()]
-
 	offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
-	offdiags_names=offdiags_c.split()
-	
 	three_body_c='''A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4'''
-	three_body_names=three_body_c.split()
-
 	torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
-	torsional_names=torsional_c.split()
-	
 	hydrogen_c = '''A1  A2  A3   r0_hb   p_hb1   p_hb2   p_hb3'''
-	hydrogen_names=hydrogen_c.split()
-
 	first_line_comment="Reactive MD-force field for ..."
+	
+	atom_types_names=[line.split() for line in atom_types_c.splitlines()]
+	bond_types_names=[line.split() for line in bond_types_c.splitlines()]
+	offdiags_names=offdiags_c.split()
+	three_body_names=three_body_c.split()
+	torsional_names=torsional_c.split()
+	hydrogen_names=hydrogen_c.split()
 	gen_p_comments=[]
-
+	
 	gen_p=[]
 	atom_types=[]
 	bonds=[]
@@ -156,7 +151,7 @@ def write_reax_file(system, best=False):
 
 def set_lammps_parameters(system):
 	write_reax_file(system)
-	lmp.command('pair_coeff * * reax/c '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	lmp.command('pair_coeff * * '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2)) ) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
 	
 	for t in system.atom_types:
 		pass
@@ -229,16 +224,13 @@ def pack_params(system):
 	# 			names += ['%d:charge'%t.element]
 	for t in system.bond_types:
 		params += [t.e, t.r]
-		# bounds += [(0,100), (0.9,3.0)]
 	for t in system.angle_types:
 		params += [t.e, t.angle]
-		# bounds += [(0,100), (0,180)]
 	for t in system.dihedral_types:
 		if len(t.e)==3:
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
-		# bounds += [(-100,100), (-50,50), (-20,20), (-10,10)]
-
+	
 	for atom in system.reax_params.atom_types:
 		names_list = system.reax_params.atom_types_names
 		atom_name = atom[0][0]
@@ -294,8 +286,7 @@ def pack_params(system):
 	if len(params)!=len(names):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
 		raise SystemExit
-		
-	# return params, bounds, names
+
 	return params, names
 
 def unpack_params(params, system):
@@ -413,11 +404,6 @@ for element_string, molecules in system.molecules_by_elements.iteritems():
 os.chdir('lammps')
 files.write_lammps_data(system)
 
-# TODO: not recognizing 'reax/c' ? 
-# Pb I I
-# LAMMPS (15 May 2015)
-# ERROR: Unknown pair style (../force.cpp:176)
-
 commands = ('''units real
 atom_style full
 pair_style reax/c NULL
@@ -472,12 +458,11 @@ include7 = [ 0,   0,   0,   1,         1,       1,       1,       1,       1,   
 
 
 initial_params, names = pack_params(system)
+bounds = [ (x*0.9, x*1.1) for x in initial_params ]
 
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
 
-
-#TODO : bounds not initialized
 def stochastic(use_gradient=True):
 	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 	print 'Error: %.4g' % best_min.fun
