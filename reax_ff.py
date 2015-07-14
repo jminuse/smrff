@@ -5,11 +5,11 @@ import utils, files, g09
 
 class Reax_params:
 	atom_types_c = '''Atom    r_s       valency   mass         r_vdw        epsilon  gamma    r_pi    valency_e    
-			alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
-			r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
-			p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
+            alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
+            r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
+            p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
 	bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
-				p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
+                  p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
 	offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
 	three_body_c='''A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4'''
 	torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
@@ -91,6 +91,16 @@ def read_reax_file(filename):
 		reax.hydrogen.append(col[:3] + [float(s) for s in col[3:]])
 	
 	return reax
+def trim_spaces(num,space_count=8,i=False):
+	if not i: 
+		s='%.4f' % num
+	else:
+		s='%d' % num
+	space = ' ' * (space_count - len(s))
+	return space+s
+
+def spaced_numbered_list(numlist):
+	return ' '.join(map(trim_spaces, numlist))
 
 def write_reax_file(system, best=False):
 	if best:
@@ -99,52 +109,55 @@ def write_reax_file(system, best=False):
 		f = open(system.name+'.reax', 'w')
 
 	# For readibility
-	delim = '   !   '
+	delim = ' !'
 	s = "     "
 	rp=system.reax_params
 
 	f.write(rp.first_line_comment)
 	
 	# Print General Parameters:
-	f.write('    ' + str(rp.number_of_gen_params) + delim + 'Number of general parameters  \n')
+	f.write(' ' + str(rp.number_of_gen_params) + '       ! ' + 'Number of general parameters  \n')
 	for i in range(rp.number_of_gen_params):
-		f.write(s + str(rp.gen_p[i]) + delim + rp.gen_p_comments[i])
+		f.write(trim_spaces(rp.gen_p[i],10) + delim + rp.gen_p_comments[i])
 
 	# Print atom types:
-	f.write(str(rp.number_atoms) + delim + rp.atom_types_c + '  \n')
+	f.write(trim_spaces(rp.number_atoms,3,1) + '    ! ' + rp.atom_types_c + '  \n')
 	for i in range(rp.number_atoms):
-		f.write(rp.atom_types[i][0][0] + s + str(rp.atom_types[i][0][1:])[1:-1].replace(',','  ') +'  \n')
-		f.write(s + str(rp.atom_types[i][1])[1:-1].replace(',','  ') +'  \n')
-		f.write(s + str(rp.atom_types[i][2])[1:-1].replace(',','  ') +'  \n')
-		f.write(s + str(rp.atom_types[i][3])[1:-1].replace(',','  ') +'  \n')
+		s=' '*2
+		if len(rp.atom_types[i][0][0]) == 2:  s = ' '
+		f.write(' ' +rp.atom_types[i][0][0] + s + spaced_numbered_list(rp.atom_types[i][0][1:]) +'  \n')
+		f.write(' '*4 + spaced_numbered_list(rp.atom_types[i][1]) +'  \n')
+		f.write(' '*4 + spaced_numbered_list(rp.atom_types[i][2]) +'  \n')
+		f.write(' '*4 + spaced_numbered_list(rp.atom_types[i][3]) +'  \n')
 
 	# Print bond types:
-	f.write(str(rp.number_bonds) + delim + rp.bond_types_c + '  \n')
+	f.write(trim_spaces(rp.number_bonds,3,1) + '    ! ' + rp.bond_types_c + '  \n')
 	for i in range(rp.number_bonds):
-		f.write(rp.bonds[i][0][0] + s + rp.bonds[i][0][1] + s + str(rp.bonds[i][0][2:])[1:-1].replace(',','  ') +'  \n')
-		f.write('          ' + str(rp.bonds[i][1])[1:-1].replace(',','  ') + '  \n')
+		s=' '*2
+		f.write(' '*2+rp.bonds[i][0][0] + ' '*2  + rp.bonds[i][0][1] + ' ' + spaced_numbered_list(rp.bonds[i][0][2:]) +'  \n')
+		f.write(' '*7 + spaced_numbered_list(rp.bonds[i][1]) + '  \n')
 	
 	# Print Off-Diagonal Terms:
-	f.write(str(rp.number_offdiags) + delim + rp.offdiags_c + '  \n')
+	f.write(trim_spaces(rp.number_offdiags,3,1) + '    ! ' + rp.offdiags_c + '  \n')
 	for i in range(rp.number_offdiags):
-		f.write(rp.offdiags[i][0] + s + rp.offdiags[i][1] + s + str(rp.offdiags[i][2:])[1:-1].replace(',','  ') + '  \n')
+		f.write(' '*2 + rp.offdiags[i][0] + ' '*2 +  rp.offdiags[i][1] + ' ' + spaced_numbered_list(rp.offdiags[i][2:]) + '  \n')
 
 	# Print Three-Body Parameters:
-	f.write(str(rp.number_threebody) + delim + rp.three_body_c + '  \n')
+	f.write(trim_spaces(rp.number_threebody,3,1) + '    ! ' + rp.three_body_c + '  \n')
 	for i in range(rp.number_threebody):
-		f.write(rp.thbps[i][0] + s + rp.thbps[i][1] + s + rp.thbps[i][2] + s + str(rp.thbps[i][3:])[1:-1].replace(',','  ') + '  \n')
+		f.write(' '*2 + rp.thbps[i][0] + ' '*2 +  rp.thbps[i][1] + ' '*2 +  rp.thbps[i][2] + ' ' + spaced_numbered_list(rp.thbps[i][3:]) + '  \n')
 
 	# Print Torsional terms:
 	if rp.number_torsional:
-		f.write(str(rp.number_torsional) + delim + rp.torsional_c + '  \n')
+		f.write(trim_spaces(rp.number_torsional,3,1) + '    ! ' + rp.torsional_c + '  \n')
 		for i in range(rp.number_torsional):
-			f.write(rp.torsional[i][0] + s + rp.torsional[i][1] + s + rp.torsional[i][2] + s + rp.torsional[i][3] + s + str(rp.torsional[i][4:])[1:-1].replace(',','  ') + '  \n')
+			f.write(' '*2 + rp.torsional[i][0] + ' '*2 +  rp.torsional[i][1] + ' '*2 +  rp.torsional[i][2] +' '*2 +  rp.torsional[i][3] + ' ' + spaced_numbered_list(rp.torsional[i][4:]) + '  \n')
 
 	# Print Hydrogen Bonds:
 	if rp.number_hydrogen:
-		f.write(str(rp.number_hydrogen) + delim + rp.hydrogen_c + '  \n')
+		f.write(trim_spaces(rp.number_hydrogen,3,1) + '    ! ' + rp.hydrogen_c + '  \n')
 		for i in range(rp.number_hydrogen):
-			f.write(rp.hydrogen[i][0] + s + rp.hydrogen[i][1] + s + rp.hydrogen[i][2] + s + str(rp.hydrogen[i][3:])[1:-1].replace(',','  ') + '  \n')
+			f.write(' '*2 + rp.hydrogen[i][0] + ' '*2 +  rp.hydrogen[i][1] + ' '*2 +  rp.hydrogen[i][2] + ' ' + spaced_numbered_list(rp.hydrogen[i][3:]) + '  \n')
 
 	f.close()
 
