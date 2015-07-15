@@ -226,17 +226,6 @@ def calculate_error(system):
 
 def pack_params(system):
 	params, names = [], []
-	# for t in system.atom_types:
-	# 	if False:
-	# 		params += [t.vdw_e, t.vdw_r]
-	# 		bounds += [(0.01,0.1), (2.5,4.0)]
-	# 		names += ['%d:vdw_e'%t.element, '%d:vdw_r'%t.element]
-	# 		if t.element==53:
-	# 			pass #defined by Pb
-	# 		else:
-	# 			params += [t.charge]
-	# 			bounds += [(0.0,2)]
-	# 			names += ['%d:charge'%t.element]
 	for t in system.bond_types:
 		params += [t.e, t.r]
 	for t in system.angle_types:
@@ -249,7 +238,7 @@ def pack_params(system):
 	for atom in system.reax_params.atom_types:
 		names_list = system.reax_params.atom_types_names
 		atom_name = atom[0][0]
-		if atom_name == 'Pb' or atom_name == "I":
+		if atom_name == 'Pb' or atom_name == 'I':
 			for i,b in enumerate(include0):
 				if b:
 					params.append(atom[0][i])
@@ -273,15 +262,17 @@ def pack_params(system):
 	for bond in system.reax_params.bonds:
 		names_list = system.reax_params.bond_types_names
 		bondname='tbp(' + bond[0][0] + ',' + bond[0][1] + ').'
-		for i,b in enumerate(include4):
-			if b:
-				params.append(bond[0][i])
-				names.append(bondname+names_list[0][i])
+		
+		if (bond[0][0],bond[0][1]) == ('1','2'): #only include Pb-I bonds
+			for i,b in enumerate(include4):
+				if b:
+					params.append(bond[0][i])
+					names.append(bondname+names_list[0][i])
 
-		for i,b in enumerate(include5):
-			if b:
-				params.append(bond[1][i])
-				names.append(bondname+names_list[1][i])
+			for i,b in enumerate(include5):
+				if b:
+					params.append(bond[1][i])
+					names.append(bondname+names_list[1][i])
 
 	for offdiag in system.reax_params.offdiags:
 		names_list=system.reax_params.offdiags_names
@@ -380,7 +371,7 @@ extra = {
 	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
 }
 
-system = utils.System(box_size=[200, 200, 200], name='test_reax')
+system = utils.System(box_size=[100, 100, 100], name='test_reax')
 
 for root, dirs, file_list in os.walk("gaussian"):
 	count = 0
@@ -456,11 +447,11 @@ def calculate_error_from_list(params):
 #          ['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e']
 include0 = [     0,    1,        0,     0,      1,        1,      1,     1,          0]
 #          ['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond']
-include1 = [ 1,      1,        1,            1,        0,      1,    1,    0]
+include1 = [ 1,      1,        0,            0,        0,      1,    1,    0]
 #          ['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****']
 include2 = [ 1,        1,      0,      1,        1,        1,        0,      0]
 #          ['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']
-include3 = [ 1,        1,       0,      1,            1,       1,       1,       1]
+include3 = [ 1,        1,       0,      1,            1,       0,       0,       0]
 
 # Bond Parameters:
 #          ['A1','A2','De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1']
@@ -476,9 +467,12 @@ include6 = [ 0,   0,   1,  1,      1,      1,    1,    1,     0]
 #          ['A1','A2','A3','theta_00','p_val1','p_val2','p_coa1','p_val7','p_pen1','p_val4']
 include7 = [ 0,   0,   0,   1,         1,       1,       1,       1,       1,       1]
 
+#r_s (= r_sigma), r_pi: bond order distances for sigma and pi bonding
+#p_bo1-5 = exponential coefficients for bond order calculation
+#p_coa parameters = pi-conjugation
 
 initial_params, names = pack_params(system)
-bounds = [ (x*0.9, x*1.1) for x in initial_params ]
+bounds = [ tuple(sorted([x*0.5, x*1.5])) if x!=0.0 else (-0.1,0.1) for x in initial_params ]
 
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
@@ -510,6 +504,9 @@ def stochastic(use_gradient=True):
 		e0 = calculate_error_from_list(x)
 		gradient = []
 		for i in range(len(x)):
+			if bounds[i]==(0.0,0.0):
+				gradient.append(0.0)
+				continue
 			oldx = x[i]
 			sign_oldx = -1 if oldx<0 else 1
 			newx = oldx + 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
@@ -519,28 +516,30 @@ def stochastic(use_gradient=True):
 				print oldx, newx, bounds[i][0], bounds[i][1]
 				exit()
 			dif = newx - oldx
-			x[i] = newx
-			gradient.append( (calculate_error_from_list(x)-e0)/dif )
-			x[i] = oldx
+			if dif != 0.0:
+				x[i] = newx
+				gradient.append( (calculate_error_from_list(x)-e0)/dif )
+				x[i] = oldx
+			else:
+				print 'dif=0.0 in numerical gradient!'
+				print newx, oldx, (bounds[i][0], bounds[i][1])
+				exit()
 		return numpy.array(gradient)
 	
 	while True:
 		params = new_param_guess(best_min.x)
 		if use_gradient:
-			x, fun, _ = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds)
+			x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds)
 			guess = utils.Struct(fun=fun,x=x)
 			print 'Error', calculate_error_from_list(params), guess.fun, best_min.fun
 		else:
 			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-			print guess.fun, best_min.fun
+			print 'Error', guess.fun, best_min.fun
 		if guess.fun < best_min.fun:
 			best_min = guess
-			print ''
-			for n,x in zip(names,best_min.x):
-				print '%-15s %-15g' % (n, x)
 			unpack_params(best_min.x, system)
 			write_reax_file(system,best=True)
-			print 'Error = %.4g' % best_min.fun
+			print 'New best error = %.4g' % best_min.fun
 	return best_min
 
 def try_params():
@@ -554,6 +553,7 @@ def try_params():
 	best_min = utils.Struct(fun=calculate_error_from_list(params),x=params)
 	print 'Error: %.4g' % best_min.fun
 	for param_index in range(len(best_min.x)):
+		'''
 		changed = []
 		for step in range(10):
 			params = []
@@ -576,9 +576,12 @@ def try_params():
 			changed.append( guess.fun != best_min.fun )
 		if not any(changed):
 			print names[param_index], 'has no effect'
+		'''
+		if best_min.x[param_index]==round(best_min.x[param_index]):
+			print names[param_index], 'is an integer'
 	return best_min
 
-# try_params()
+#try_params()
 
-stochastic(True)
+stochastic(False)
 
