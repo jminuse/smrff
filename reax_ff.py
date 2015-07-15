@@ -16,7 +16,7 @@ class Reax_params:
 		self.torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
 		self.hydrogen_c = '''A1  A2  A3   r0_hb   p_hb1   p_hb2   p_hb3'''
 		self.first_line_comment="Reactive MD-force field for ..."
-		self.gen_p_comments=[]
+		self.general_parameter_comments=[]
 	
 		self.atom_types_names=[line.split() for line in self.atom_types_c.splitlines()]
 		self.bond_types_names=[line.split() for line in self.bond_types_c.splitlines()]
@@ -25,7 +25,7 @@ class Reax_params:
 		self.torsional_names=self.torsional_c.split()
 		self.hydrogen_names=self.hydrogen_c.split()
 	
-		self.gen_p=[]
+		self.general_parameters=[]
 		self.atom_types=[]
 		self.bonds=[]
 		self.offdiags=[]
@@ -34,7 +34,7 @@ class Reax_params:
 		self.hydrogen=[]
 	
 	def __repr__(self):
-		return '\n'.join([str(s) for s in [self.gen_p, self.atom_types, self.bonds, self.offdiags, self.thbps, self.torsional, self.hydrogen]])
+		return '\n'.join([str(s) for s in [self.general_parameters, self.atom_types, self.bonds, self.offdiags, self.thbps, self.torsional, self.hydrogen]])
 
 def read_reax_file(filename):
 	reax = Reax_params()
@@ -44,8 +44,8 @@ def read_reax_file(filename):
 	reax.number_of_gen_params = int(re.search('\s*([0-9\.\-]+)\s+\!.*',f.readline()).group(1))
 	for i in range(reax.number_of_gen_params):
 		m=re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline())
-		reax.gen_p.append( float(  m.group(1) ) )
-		reax.gen_p_comments.append(m.group(2).strip())
+		reax.general_parameters.append( float(  m.group(1) ) )
+		reax.general_parameter_comments.append(m.group(2).strip())
 
 	reax.number_atoms = int(re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline()).group(1))
 	f.readline(); f.readline(); f.readline()
@@ -121,7 +121,7 @@ def write_reax_file(system, best=False):
 	# Print General Parameters:
 	f.write(' ' + str(rp.number_of_gen_params) + '       ! ' + 'Number of general parameters  \n')
 	for i in range(rp.number_of_gen_params):
-		f.write(trim_spaces(rp.gen_p[i],10) + delim + rp.gen_p_comments[i] +'  \n')
+		f.write(trim_spaces(rp.general_parameters[i],10) + delim + rp.general_parameter_comments[i] +'  \n')
 
 	# Print atom types:
 	f.write(trim_spaces(rp.number_atoms,3,1) + '    ! ' + rp.atom_types_c + '  \n')
@@ -187,7 +187,7 @@ def calculate_error(system):
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
-	lmp.command('run 1')
+	lmp.command('run 10')
 	lammps_energies = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 	lammps_forces = lmp.extract_atom('f',3)
 	
@@ -325,8 +325,8 @@ Pb = 907
 I = 838
 
 extra = {
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.1, vdw_r=3.0),
-	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=1.0, vdw_e=0.1, vdw_r=3.0),
+	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.5, vdw_e=0.1, vdw_r=3.0),
 }
 
 system = utils.System(box_size=[100, 100, 100], name='test_reax')
@@ -338,21 +338,30 @@ for root, dirs, file_list in os.walk("gaussian"):
 			name = ff[:-4]
 	#for step in range(20):
 	#		name = 'PbI2_r%d' % step
+			if not name.startswith('PbI2'): continue
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name, check_convergence=False)
 			#if any([utils.dist(atoms[0], a)>3.5 for a in atoms]) and len(atoms)<6: continue
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
-			print total.element_string
+			print 'Read', total.element_string, 'from', name
 			for i,a in enumerate(total.atoms):
 				b = atoms[i]
 				a.x, a.y, a.z = b.x, b.y, b.z
 				a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
-			system.add(total, count*200.0)
+			system.add(total, count*100.0)
 			count += 1
-
-system.box_size[0] = count*400+200 #make system big enough to hold all atoms
+#make system big enough to hold all atoms
+system.box_size[0] = max(system.atoms, key=lambda a:a.x).x-min(system.atoms, key=lambda a:a.x).x
+system.box_size[1] = max(system.atoms, key=lambda a:a.y).y-min(system.atoms, key=lambda a:a.y).y
+system.box_size[2] = max(system.atoms, key=lambda a:a.z).z-min(system.atoms, key=lambda a:a.z).z
+#center atoms
+for a in system.atoms:
+	a.x -= system.box_size[0]*0.5
+system.box_size[0] += 100
+system.box_size[1] += 10
+system.box_size[2] += 10
 #group molecules by .element_string
 system.molecules_by_elements = {}
 for m in system.molecules:
@@ -394,12 +403,9 @@ system.reax_includes = read_reax_file('../include.reax')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
-	
 	for t in system.atom_types + system.bond_types + system.angle_types + system.dihedral_types:
 		t.written_to_lammps = False
-	
 	error = calculate_error(system)
-	
 	return error
 
 initial_params, names = pack_params(system)
@@ -411,6 +417,7 @@ from scipy.optimize import minimize, fmin_l_bfgs_b
 def stochastic(use_gradient=True):
 	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 	print 'Error: %.4g' % best_min.fun
+	#exit()
 	
 	def new_param_guess(start):
 		while True: #keep going until new params are generated
@@ -458,6 +465,7 @@ def stochastic(use_gradient=True):
 		return numpy.array(gradient)
 	
 	while True:
+	#for step in range(10000):
 		params = new_param_guess(best_min.x)
 		if use_gradient:
 			x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
@@ -474,5 +482,5 @@ def stochastic(use_gradient=True):
 	return best_min
 
 
-stochastic(True)
+stochastic(False)
 
