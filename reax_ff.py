@@ -4,34 +4,37 @@ sys.path.append("/fs/home/jms875/Library/2.0/tools")
 import utils, files, g09
 
 class Reax_params:
-	atom_types_c = '''Atom    r_s       valency   mass         r_vdw        epsilon  gamma    r_pi    valency_e    
-            alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
-            r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
-            p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
-	bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
-                  p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
-	offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
-	three_body_c='''A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4'''
-	torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
-	hydrogen_c = '''A1  A2  A3   r0_hb   p_hb1   p_hb2   p_hb3'''
-	first_line_comment="Reactive MD-force field for ..."
+	def __init__(self):
+		self.atom_types_c = '''Atom    r_s       valency   mass         r_vdw        epsilon  gamma    r_pi    valency_e    
+		        alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
+		        r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
+		        p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2'''
+		self.bond_types_c = '''A1  A2      De_s   De_p   De_pp  p_be1  p_bo5  v13cor  p_bo6  p_ovun1       
+		              p_be2  p_bo3  p_bo4  *****  p_bo1  p_bo2   ovc    *****'''
+		self.offdiags_c='''A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*'''
+		self.three_body_c='''A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4'''
+		self.torsional_c='''A1  A2  A3  A4   V1   V2   V3   p_tor1   p_cot1   *****   *****'''
+		self.hydrogen_c = '''A1  A2  A3   r0_hb   p_hb1   p_hb2   p_hb3'''
+		self.first_line_comment="Reactive MD-force field for ..."
+		self.gen_p_comments=[]
 	
-	atom_types_names=[line.split() for line in atom_types_c.splitlines()]
-	bond_types_names=[line.split() for line in bond_types_c.splitlines()]
-	offdiags_names=offdiags_c.split()
-	three_body_names=three_body_c.split()
-	torsional_names=torsional_c.split()
-	hydrogen_names=hydrogen_c.split()
-	gen_p_comments=[]
+		self.atom_types_names=[line.split() for line in self.atom_types_c.splitlines()]
+		self.bond_types_names=[line.split() for line in self.bond_types_c.splitlines()]
+		self.offdiags_names=self.offdiags_c.split()
+		self.three_body_names=self.three_body_c.split()
+		self.torsional_names=self.torsional_c.split()
+		self.hydrogen_names=self.hydrogen_c.split()
 	
-	gen_p=[]
-	atom_types=[]
-	bonds=[]
-	offdiags=[]
-	thbps=[]
-	torsional=[]
-	hydrogen=[]
-
+		self.gen_p=[]
+		self.atom_types=[]
+		self.bonds=[]
+		self.offdiags=[]
+		self.thbps=[]
+		self.torsional=[]
+		self.hydrogen=[]
+	
+	def __repr__(self):
+		return '\n'.join([str(s) for s in [self.gen_p, self.atom_types, self.bonds, self.offdiags, self.thbps, self.torsional, self.hydrogen]])
 
 def read_reax_file(filename):
 	reax = Reax_params()
@@ -235,58 +238,56 @@ def pack_params(system):
 			t.e = list(t.e)+[0.0]
 		params += list(t.e)
 	
-	for atom in system.reax_params.atom_types:
+	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
 		names_list = system.reax_params.atom_types_names
 		atom_name = atom[0][0]
-		if atom_name == 'Pb' or atom_name == 'I':
-			for i,b in enumerate(include0):
-				if b:
-					params.append(atom[0][i])
-					names.append(atom_name + '.' + names_list[0][i])
-			
-			for i,b in enumerate(include1):
-				if b:
-					params.append(atom[1][i])
-					names.append(atom_name + '.' + names_list[1][i])
+		
+		for i,b in enumerate(include[0]):
+			if b and type(b)!=str:
+				params.append(atom[0][i])
+				names.append(atom_name + '.' + names_list[0][i])
+		
+		for i,b in enumerate(include[1]):
+			if b and type(b)!=str:
+				params.append(atom[1][i])
+				names.append(atom_name + '.' + names_list[1][i])
 
-			for i,b in enumerate(include2):
-				if b:
-					params.append(atom[2][i])
-					names.append(atom_name + '.' + names_list[2][i])
+		for i,b in enumerate(include[2]):
+			if b and type(b)!=str:
+				params.append(atom[2][i])
+				names.append(atom_name + '.' + names_list[2][i])
 
-			for i,b in enumerate(include3):
-				if b:
-					params.append(atom[3][i])
-					names.append(atom_name + '.' + names_list[3][i])
+		for i,b in enumerate(include[3]):
+			if b and type(b)!=str:
+				params.append(atom[3][i])
+				names.append(atom_name + '.' + names_list[3][i])
 
-	for bond in system.reax_params.bonds:
+	for bond,include in zip(system.reax_params.bonds, system.reax_includes.bonds):
 		names_list = system.reax_params.bond_types_names
 		bondname='tbp(' + bond[0][0] + ',' + bond[0][1] + ').'
-		
-		if (bond[0][0],bond[0][1]) == ('1','2'): #only include Pb-I bonds
-			for i,b in enumerate(include4):
-				if b:
-					params.append(bond[0][i])
-					names.append(bondname+names_list[0][i])
+		for i,b in enumerate(include[0]):
+			if b and type(b)!=str:
+				params.append(bond[0][i])
+				names.append(bondname+names_list[0][i])
 
-			for i,b in enumerate(include5):
-				if b:
-					params.append(bond[1][i])
-					names.append(bondname+names_list[1][i])
+		for i,b in enumerate(include[1]):
+			if b and type(b)!=str:
+				params.append(bond[1][i])
+				names.append(bondname+names_list[1][i])
 
-	for offdiag in system.reax_params.offdiags:
+	for offdiag,include in zip(system.reax_params.offdiags, system.reax_includes.offdiags):
 		names_list=system.reax_params.offdiags_names
 		offdname='offd('+offdiag[0]+','+offdiag[1]+').'
-		for i,b in enumerate(include6):
-			if b:
+		for i,b in enumerate(include):
+			if b and type(b)!=str:
 				params.append(offdiag[i])
 				names.append(offdname+names_list[i])
 
-	for thbp in system.reax_params.thbps:
+	for thbp,include in zip(system.reax_params.thbps,system.reax_includes.thbps):
 		names_list = system.reax_params.three_body_names
-		thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+')'
-		for i,b in enumerate(include7):
-			if b:
+		thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+').'
+		for i,b in enumerate(include):
+			if b and type(b)!=str:
 				params.append(thbp[i])
 				names.append(thbpname + names_list[i])
 
@@ -294,69 +295,46 @@ def pack_params(system):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
 		raise SystemExit
 	print names
+	print params
 	return params, names
 
 def unpack_params(params, system):
-	i = 0
-	# for t in system.atom_types:
-	# 	if False:
-	# 		t.vdw_e, t.vdw_r = params[i], params[i+1]
-	# 		i += 2
-	# 		if t.element==53:
-	# 			pass #defined by Pb
-	# 		else:
-	# 			t.charge = params[i]
-	# 			i += 1
+	p = 0
 	for t in system.bond_types:
-		t.e, t.r = params[i], params[i+1]
-		i += 2
+		t.e, t.r = params[p], params[p+1]
+		p += 2
 	for t in system.angle_types:
-		t.e, t.angle = params[i], params[i+1]
-		i += 2
+		t.e, t.angle = params[p], params[p+1]
+		p += 2
 	for t in system.dihedral_types:
-		t.e = tuple(params[i:i+4])
-		i += 4
-	for atom_iter in range( len(system.reax_params.atom_types) ):
-		if system.reax_params.atom_types[atom_iter][0][0]=='Pb' or \
-		   system.reax_params.atom_types[atom_iter][0][0]=='I':
-			for param_iter,b in enumerate(include0):
-				if b:
-					system.reax_params.atom_types[atom_iter][0][param_iter] = params[i]
-					i += 1
-			for param_iter,b in enumerate(include1):
-				if b:
-					system.reax_params.atom_types[atom_iter][1][param_iter] = params[i]
-					i += 1
-			for param_iter,b in enumerate(include2):
-				if b:
-					system.reax_params.atom_types[atom_iter][2][param_iter] = params[i]
-					i += 1
-			for param_iter,b in enumerate(include3):
-				if b:
-					system.reax_params.atom_types[atom_iter][3][param_iter] = params[i]
-					i += 1
-	for bond_iter in range(system.reax_params.number_bonds):
-		for param_iter,b in enumerate(include4):
-			if b:
-				system.reax_params.bonds[bond_iter][0][param_iter] = params[i]
-				i += 1
-		for param_iter,b in enumerate(include5):
-			if b:
-				system.reax_params.bonds[bond_iter][1][param_iter] = params[i]
-				i += 1
+		t.e = tuple(params[p:p+4])
+		p += 4
+	
+	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
+		for line in range(4):
+			for i,b in enumerate(include[line]):
+				if b and type(b)!=str:
+					atom[line][i] = params[p]
+					p += 1
 
-	for offdiag_iter in range(system.reax_params.number_offdiags):
-		for param_iter,b in enumerate(include6):
-			if b:
-				system.reax_params.offdiags[offdiag_iter][param_iter] = params[i]
-				i += 1
+	for bond,include in zip(system.reax_params.bonds, system.reax_includes.bonds):
+		for line in range(2):
+			for i,b in enumerate(include[line]):
+				if b and type(b)!=str:
+					bond[line][i] = params[p]
+					p += 1
 
-	for thbp_iter in range(system.reax_params.number_threebody):
-	    for param_iter,b in enumerate(include7):
-	        if b:
-				system.reax_params.thbps[thbp_iter][param_iter] = params[i]
-				i += 1
+	for offdiag,include in zip(system.reax_params.offdiags, system.reax_includes.offdiags):
+		for i,b in enumerate(include):
+			if b and type(b)!=str:
+				offdiag[i] = params[p]
+				p += 1
 
+	for thbp,include in zip(system.reax_params.thbps,system.reax_includes.thbps):
+		for i,b in enumerate(include):
+			if b and type(b)!=str:
+				thbp[i] = params[p]
+				p += 1
 
 I_ = 66
 H_ = 54
@@ -432,6 +410,7 @@ for line in commands:
 	lmp.command(line)
 
 system.reax_params = read_reax_file('../input.reax')
+system.reax_includes = read_reax_file('../include.reax')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
@@ -442,34 +421,6 @@ def calculate_error_from_list(params):
 	error = calculate_error(system)
 	
 	return error
-
-# Atom Parameters:
-#          ['Atom','r_s','valency','mass','r_vdw','epsilon','gamma','r_pi','valency_e']
-include0 = [     0,    1,        0,     0,      1,        1,      1,     1,          0]
-#          ['alpha','gamma_w','valency_boc','p_ovun5','*****','chi','eta','p_hbond']
-include1 = [ 1,      1,        0,            0,        0,      1,    1,    0]
-#          ['r_pi_pi','p_lp2','*****','b_o_131','b_o_132','b_o_133','*****','*****']
-include2 = [ 1,        1,      0,      1,        1,        1,        0,      0]
-#          ['p_ovun2','p_val3','*****','valency_val','p_val5','rcore2','ecore2','acore2']
-include3 = [ 1,        1,       0,      1,            1,       0,       0,       0]
-
-# Bond Parameters:
-#          ['A1','A2','De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1']
-include4 = [ 0,   0,   1,     1,     1,      1,      1,      1,       1,      1]
-#          ['p_be2','p_bo3','p_bo4','*****','p_bo1','p_bo2','ovc','*****']
-include5 = [ 1,      1,      1,      0,      1,      1,      1,    0]
-
-# Off-Diagonal Parameters:
-#          ['A1','A2','D','r_vdw','alpha','r_s','r_p','r_pp','*lgcij*']
-include6 = [ 0,   0,   1,  1,      1,      1,    1,    1,     0]
-
-# Three-Body Parameters:
-#          ['A1','A2','A3','theta_00','p_val1','p_val2','p_coa1','p_val7','p_pen1','p_val4']
-include7 = [ 0,   0,   0,   1,         1,       1,       1,       1,       1,       1]
-
-#r_s (= r_sigma), r_pi: bond order distances for sigma and pi bonding
-#p_bo1-5 = exponential coefficients for bond order calculation
-#p_coa parameters = pi-conjugation
 
 initial_params, names = pack_params(system)
 bounds = [ tuple(sorted([x*0.5, x*1.5])) if x!=0.0 else (-0.1,0.1) for x in initial_params ]
