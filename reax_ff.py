@@ -241,40 +241,21 @@ def pack_params(system):
 	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
 		names_list = system.reax_params.atom_types_names
 		atom_name = atom[0][0]
-		
-		for i,b in enumerate(include[0]):
-			if b and type(b)!=str:
-				params.append(atom[0][i])
-				names.append(atom_name + '.' + names_list[0][i])
-		
-		for i,b in enumerate(include[1]):
-			if b and type(b)!=str:
-				params.append(atom[1][i])
-				names.append(atom_name + '.' + names_list[1][i])
-
-		for i,b in enumerate(include[2]):
-			if b and type(b)!=str:
-				params.append(atom[2][i])
-				names.append(atom_name + '.' + names_list[2][i])
-
-		for i,b in enumerate(include[3]):
-			if b and type(b)!=str:
-				params.append(atom[3][i])
-				names.append(atom_name + '.' + names_list[3][i])
+		for line in range(4):
+			for i,b in enumerate(include[line]):
+				if b and type(b)!=str:
+					params.append(atom[line][i])
+					names.append(atom_name + '.' + names_list[line][i])
 
 	for bond,include in zip(system.reax_params.bonds, system.reax_includes.bonds):
 		names_list = system.reax_params.bond_types_names
 		bondname='tbp(' + bond[0][0] + ',' + bond[0][1] + ').'
-		for i,b in enumerate(include[0]):
-			if b and type(b)!=str:
-				params.append(bond[0][i])
-				names.append(bondname+names_list[0][i])
-
-		for i,b in enumerate(include[1]):
-			if b and type(b)!=str:
-				params.append(bond[1][i])
-				names.append(bondname+names_list[1][i])
-
+		for line in range(2):
+			for i,b in enumerate(include[line]):
+				if b and type(b)!=str:
+					params.append(bond[line][i])
+					names.append(bondname+names_list[line][i])
+	
 	for offdiag,include in zip(system.reax_params.offdiags, system.reax_includes.offdiags):
 		names_list=system.reax_params.offdiags_names
 		offdname='offd('+offdiag[0]+','+offdiag[1]+').'
@@ -294,8 +275,7 @@ def pack_params(system):
 	if len(params)!=len(names):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
 		raise SystemExit
-	print names
-	print params
+	
 	return params, names
 
 def unpack_params(params, system):
@@ -480,7 +460,7 @@ def stochastic(use_gradient=True):
 	while True:
 		params = new_param_guess(best_min.x)
 		if use_gradient:
-			x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds)
+			x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
 			guess = utils.Struct(fun=fun,x=x)
 			print 'Error', calculate_error_from_list(params), guess.fun, best_min.fun
 		else:
@@ -493,46 +473,6 @@ def stochastic(use_gradient=True):
 			print 'New best error = %.4g' % best_min.fun
 	return best_min
 
-def try_params():
-	params = []
-	for p,b in zip(initial_params, bounds):
-		if p < b[0]:
-			p = b[0]
-		elif p > b[1]:
-			p = b[1]
-		params.append( p )
-	best_min = utils.Struct(fun=calculate_error_from_list(params),x=params)
-	print 'Error: %.4g' % best_min.fun
-	for param_index in range(len(best_min.x)):
-		'''
-		changed = []
-		for step in range(10):
-			params = []
-			for i,p,b in zip(range(len(best_min.x)), best_min.x, bounds):
-				new = p
-				if i==param_index:
-					new = random.gauss(p, 0.2*(b[1]-b[0]) )
-				#reflect
-				if new < b[0]:
-					new += (b[0]-new)
-				elif new > b[1]:
-					new -= (b[1]-new)
-				#just set
-				if new < b[0]:
-					new = b[0]
-				elif new > b[1]:
-					new = b[1]
-				params.append( new )
-			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-			changed.append( guess.fun != best_min.fun )
-		if not any(changed):
-			print names[param_index], 'has no effect'
-		'''
-		if best_min.x[param_index]==round(best_min.x[param_index]):
-			print names[param_index], 'is an integer'
-	return best_min
 
-#try_params()
-
-stochastic(False)
+stochastic(True)
 
