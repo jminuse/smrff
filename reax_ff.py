@@ -605,7 +605,6 @@ for line in commands:
 
 system.reax_params = read_reax_file('../input.reax')
 system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
-# system.reax_includes = read_reax_file('../include.reax')
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
@@ -615,11 +614,11 @@ def calculate_error_from_list(params):
 	return error
 
 initial_params, names = pack_params(system)
-# bounds = [ tuple(sorted([x*0.5, x*1.5])) if x!=0.0 else (-0.1,0.1) for x in initial_params ]
+
+print "Parametrization on:"
+print '      Variable         Initial         Bounds'
 for x,y,z in zip(names,initial_params,bounds):
-	print x,y,z
-print len(names),len(initial_params),len(bounds)
-raise SystemExit
+	print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
