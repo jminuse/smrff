@@ -118,7 +118,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][0].append(0)
 			else:
-			 	m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+			 	m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
 				else:
@@ -135,7 +135,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][1].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b = (params.atom_types[i][1][index] * default_bound_mults[0],params.atom_types[i][1][index] * default_bound_mults[1])
 				else:
@@ -152,7 +152,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][2].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b = (params.atom_types[i][2][index] * default_bound_mults[0],params.atom_types[i][2][index] * default_bound_mults[1]) 
 				else:
@@ -170,7 +170,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][3].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b =  (params.atom_types[i][3][index] * default_bound_mults[0],params.atom_types[i][3][index] * default_bound_mults[1]) 
 				else:
@@ -191,7 +191,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.bonds[i][0].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b = (params.bonds[i][0][index] * default_bound_mults[0],params.bonds[i][0][index] * default_bound_mults[1]) 
 				else:
@@ -208,7 +208,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.bonds[i][1].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b =  (params.bonds[i][1][index] * default_bound_mults[0],params.bonds[i][1][index] * default_bound_mults[1]) 
 				else:
@@ -227,7 +227,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.offdiags[i].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b =  (params.offdiags[i][index] * default_bound_mults[0],params.offdiags[i][index] * default_bound_mults[1]) 
 				else:
@@ -246,7 +246,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.thbps[i].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b =  (params.thbps[i][index] * default_bound_mults[0],params.thbps[i][index] * default_bound_mults[1]) 
 				else:
@@ -265,7 +265,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.torsional[i].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b =  (params.torsional[i][index] * default_bound_mults[0],params.torsional[i][index] * default_bound_mults[1]) 
 				else:
@@ -284,7 +284,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.hydrogen[i].append(0)
 			else:
-				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
 				if not m:
 					b =  (params.hydrogen[i][index] * default_bound_mults[0],params.hydrogen[i][index] * default_bound_mults[1]) 
 				else:
