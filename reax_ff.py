@@ -118,11 +118,11 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][0].append(0)
 			else:
-			 	m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
-				if not m:
-					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
+			 	m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.])+',item)
+				if ',' in item:
+					b = [float(s) for s in item.split(',')]
 				else:
-					b = (float(m.group(1)),float(m.group(2)))
+					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
 				b = tuple(sorted(b))
 				if b == (0,0):
 					b = default_bounds_zero_value
