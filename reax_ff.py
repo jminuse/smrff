@@ -391,7 +391,7 @@ read_data	'''+system.name+'''.data
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
 thermo_style custom pe c_test_pe
-pair_coeff * * ../input.reax Pb I '''+(' NULL'*(len(system.atom_types)-2))+'''
+pair_coeff * * ../input_new.reax Pb I '''+(' NULL'*(len(system.atom_types)-2))+'''
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 ''').splitlines()
 lmp = lammps('',['-log',system.name+'.log','-screen','none'])
@@ -468,9 +468,13 @@ def stochastic(use_gradient=True):
 	#for step in range(10000):
 		params = new_param_guess(best_min.x)
 		if use_gradient:
+			start_error = calculate_error_from_list(params)
+			while start_error > 2.0:
+				params = new_param_guess(best_min.x)
+				start_error = calculate_error_from_list(params)
 			x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
 			guess = utils.Struct(fun=fun,x=x)
-			print 'Error', calculate_error_from_list(params), guess.fun, best_min.fun
+			print 'Error', start_error, guess.fun, best_min.fun
 		else:
 			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 			print 'Error', guess.fun, best_min.fun
@@ -482,5 +486,5 @@ def stochastic(use_gradient=True):
 	return best_min
 
 
-stochastic(False)
+stochastic(True)
 

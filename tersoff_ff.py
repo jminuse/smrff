@@ -92,17 +92,50 @@ def calculate_error(system):
 	atom_count = 0
 	for m in system.molecules:
 		m.lammps_energy = sum( [lammps_energies[i] for i in range(atom_count, len(m.atoms)+atom_count)] )
+		
+		#testing
+		for a in m.atoms:
+			for b in m.atoms:
+				if not a is b:
+					r = utils.dist(a,b)
+					coul = 332*a.type.charge*b.type.charge/r
+					eps = (a.type.vdw_e * b.type.vdw_e)**0.5
+					sigma = (a.type.vdw_r * b.type.vdw_r)**0.5
+					lj = 4*eps*( (sigma/r)**12 - (sigma/r)**6 )
+					R = 3.1
+					D = 0.5
+					if r < R-D:
+						cut = 0.0
+					elif r < R+D:
+						cut = 1 - 0.5*( 1.0 - math.sin(0.5*math.pi*(r-R)/D) )
+					else:
+						cut = 1.0
+					m.lammps_energy += cut*(coul + lj)/2 + cut*30
+		#end testing
+		
 		atom_count += len(m.atoms)
 	
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
+	
+	xx = []
+	yy = []
+	
 	for elements,molecules in system.molecules_by_elements.iteritems():
 		baseline_energy = molecules[0].lammps_energy #should be in order of increasing energy
 		for m in molecules:
 			m.lammps_energy -= baseline_energy
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
+			
 			print m.energy, m.lammps_energy
+			xx += [m.energy]
+			yy += [m.lammps_energy]
+			
+	import matplotlib.pyplot as plt
+	plt.plot(xx)
+	plt.plot(yy)
+	plt.show()
 	exit()
 	#calculate force error
 	relative_force_error, absolute_force_error = 0.0, 0.0
@@ -211,8 +244,8 @@ Pb = 907
 I = 838
 
 extra = {
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.1, vdw_r=3.0),
-	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=0.0, vdw_e=0.1, vdw_r=3.0),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=30.0, vdw_r=3.0),
+	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.0, vdw_e=30.0, vdw_r=3.0),
 }
 
 system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
@@ -337,6 +370,8 @@ def stochastic(use_gradient=True):
 	while True:
 		params = new_param_guess(best_min.x)
 		if use_gradient:
+			while calculate_error_from_list(params)>best_min.fun*3:
+				params = new_param_guess(best_min.x)
 			x, fun, _ = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds)
 			guess = utils.Struct(fun=fun,x=x)
 			print calculate_error_from_list(params), guess.fun, best_min.fun
