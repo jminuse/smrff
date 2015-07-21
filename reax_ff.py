@@ -94,6 +94,209 @@ def read_reax_file(filename):
 		reax.hydrogen.append(col[:3] + [float(s) for s in col[3:]])
 	
 	return reax
+
+def read_reax_include_file(filename,params):
+	reax = Reax_params()
+	f=open(filename)
+	f.readline()
+	bounds=[]
+	default_bound_mults=(0.5,1.5)
+	default_bounds_zero_value = (-0.1,0.1)
+
+	reax.number_of_gen_params = int(re.search('\s*([0-9\.\-]+)\s+\!.*',f.readline()).group(1))
+	for i in range(reax.number_of_gen_params):
+		m=re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline())
+		reax.general_parameters.append( float(  m.group(1) ) )
+
+	reax.number_atoms = int(re.search('\s*([0-9\.\-]+)\s+\!(.*)',f.readline()).group(1))
+	f.readline(); f.readline(); f.readline()
+	for i in range(reax.number_atoms):
+		reax.atom_types.append([])
+		col = f.readline().split()
+		reax.atom_types[i].append([col[0]])
+		for index,item in enumerate(col[1:],1):
+			if item == '0':
+				reax.atom_types[i][0].append(0)
+			else:
+			 	m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.atom_types[i][0].append(b)
+
+		col = f.readline().split()
+		reax.atom_types[i].append([])
+		for index,item in enumerate(col):
+			if item == '0':
+				reax.atom_types[i][1].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b = (params.atom_types[i][1][index] * default_bound_mults[0],params.atom_types[i][1][index] * default_bound_mults[1])
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.atom_types[i][1].append(b)
+		
+		col = f.readline().split()		
+		reax.atom_types[i].append([])
+		for index,item in enumerate(col):
+			if item == '0':
+				reax.atom_types[i][2].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b = (params.atom_types[i][2][index] * default_bound_mults[0],params.atom_types[i][2][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.atom_types[i][2].append(b)
+
+
+		col = f.readline().split()
+		reax.atom_types[i].append([])
+		for index,item in enumerate(col):
+			if item == '0':
+				reax.atom_types[i][3].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b =  (params.atom_types[i][3][index] * default_bound_mults[0],params.atom_types[i][3][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.atom_types[i][3].append(b)
+
+	reax.number_bonds = int(re.search('\s*([0-9]+)\s+\!(.*)',f.readline()).group(1))
+	f.readline()
+	for i in range(reax.number_bonds):
+		reax.bonds.append([])
+		col = f.readline().split()
+		reax.bonds[i].append(col[:2])
+		for index,item in enumerate(col[2:],2):
+			if item == '0':
+				reax.bonds[i][0].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b = (params.bonds[i][0][index] * default_bound_mults[0],params.bonds[i][0][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.bonds[i][0].append(b)
+
+		col = f.readline().split()
+		reax.bonds[i].append([])
+		for index,item in enumerate(col):
+			if item == '0':
+				reax.bonds[i][1].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b =  (params.bonds[i][1][index] * default_bound_mults[0],params.bonds[i][1][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.bonds[i][1].append(b)
+
+	reax.number_offdiags = int(re.search('\s*([0-9]+)\s+\!(.*)',f.readline()).group(1))
+	for i in range(reax.number_offdiags):
+		col=f.readline().split()
+		reax.offdiags.append(col[:2])
+		for index,item in enumerate(col[2:],2):
+			if item == '0':
+				reax.offdiags[i].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b =  (params.offdiags[i][index] * default_bound_mults[0],params.offdiags[i][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.offdiags[i].append(b)
+
+	reax.number_threebody = int(re.search('\s*([0-9]+)\s+\!(.*)',f.readline()).group(1))
+	for i in range(reax.number_threebody):
+		col=f.readline().split()
+		reax.thbps.append(col[:3])
+		for index,item in enumerate(col[3:],3):
+			if item == '0':
+				reax.thbps[i].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b =  (params.thbps[i][index] * default_bound_mults[0],params.thbps[i][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.thbps[i].append(b)
+		
+	reax.number_torsional = int(re.search('\s*([0-9]+)\s+\!(.*)',f.readline()).group(1))
+	for i in range(reax.number_torsional):
+		col=f.readline().split()
+		reax.torsional.append(col[:4])
+		for index,item in enumerate(col[4:],4):
+			if item == '0':
+				reax.torsional[i].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b =  (params.torsional[i][index] * default_bound_mults[0],params.torsional[i][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.torsional[i].append(b)
+	
+	reax.number_hydrogen = int(re.search('\s*([0-9]+)\s+\!(.*)',f.readline()).group(1))
+	for i in range(reax.number_hydrogen):
+		col=f.readline().split()
+		reax.hydrogen.append(col[:3])
+		for index,item in enumerate(col[3:],3):
+			if item == '0':
+				reax.hydrogen[i].append(0)
+			else:
+				m=re.match('\((\-?[0-9\.]+)\,(\-?[0-9\.])+\)',item)
+				if not m:
+					b =  (params.hydrogen[i][index] * default_bound_mults[0],params.hydrogen[i][index] * default_bound_mults[1]) 
+				else:
+					b = (float(m.group(1)),float(m.group(2)))
+				b = tuple(sorted(b))
+				if b == (0,0):
+					b = default_bounds_zero_value
+				bounds.append(b)
+				reax.hydrogen[i].append(b)
+	f.close()
+	return reax, bounds
+
 def trim_spaces(num,space_count=8,i=False):
 	if not i: 
 		s='%.4f' % num
@@ -342,6 +545,8 @@ for root, dirs, file_list in os.walk("gaussian"):
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name, check_convergence=False)
 			#if any([utils.dist(atoms[0], a)>3.5 for a in atoms]) and len(atoms)<6: continue
+			if name.startswith('PbI2_l'): continue
+			# if name.startswith('PbI2_c'): continue
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
@@ -399,7 +604,7 @@ for line in commands:
 	lmp.command(line)
 
 system.reax_params = read_reax_file('../input.reax')
-system.reax_includes = read_reax_file('../include.reax')
+system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
 
 def calculate_error_from_list(params):
 	unpack_params(params, system)
@@ -409,7 +614,11 @@ def calculate_error_from_list(params):
 	return error
 
 initial_params, names = pack_params(system)
-bounds = [ tuple(sorted([x*0.5, x*1.5])) if x!=0.0 else (-0.1,0.1) for x in initial_params ]
+
+print "Parametrization on:"
+print '      Variable         Initial         Bounds'
+for x,y,z in zip(names,initial_params,bounds):
+	print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
 import numpy
 from scipy.optimize import minimize, fmin_l_bfgs_b
