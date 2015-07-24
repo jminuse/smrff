@@ -663,6 +663,43 @@ def run(system_name, parallel_system_names=[]):
 					exit()
 			return numpy.array(gradient)
 	
+	# For refreshing the bounds:
+	# def extend_parameter_history(param_h,curr_params):
+	# 	for i in range(len(curr_params)):
+	# 		param_h[i].append(curr_params[i])
+	# 	return param_h
+
+	# def rebound(param_hist):
+	# 	newbounds=[]
+	# 	trimmed_param_hist=[]
+	# 	for i,p in enumerate(param_hist):
+	# 		trimmed_param_hist.append([p[-1]])
+	# 		avg=numpy.mean(p)
+	# 		sigma=numpy.std(p)
+	# 		if min(p)<=bounds[i][0] and max(p)>=bounds[i][1]:
+	# 			newbounds.append((bounds[i][0]-sigma,bounds[i][1]+sigma))
+	# 		else:
+	# 			newbounds.append((avg-2*sigma,avg+2*sigma))
+	# 	for i in range(len(names)):
+	# 		if names[i].endswith('gamma_w'):
+	# 			print names[i] + 'old bounds:' + str(bounds[i]) + ' new:' + str(newbounds[i])
+	# 			if newbounds[i][0]<=.5:
+	# 				newbounds[i]=(.501,newbounds[i][1])
+	# 			print names[i] + 'old bounds:' + str(bounds[i]) + ' new:' + str(newbounds[i])
+	# 	newlogname=log.name[0:-2] +  ('%.2f' % ((float(log.name[-2:]) +1)/100))[-2:]
+	# 	log.close()
+	# 	newlog=open('../logs/'+newlogname,'w+')
+	# 	newlog.write('#'+str(names)+'Error'+'\n')
+	# 	newlog.write('#'+str(bounds)+'\n')
+	# 	return trimmed_param_hist,newbounds,newlog
+
+	# param_hist=[[] for x in range(len(initial_params))]
+	# param_hist=extend_parameter_history(param_hist,initial_params)
+
+	# log = open('../logs/'+system.name+'.paramlog'+'00','w+')
+	# log.write('#'+str(names)+'Error'+'\n')
+	# log.write('#'+str(bounds)+'\n')
+
 		while True:
 		#for step in range(10000):
 			params = new_param_guess(best_min.x)
@@ -682,6 +719,14 @@ def run(system_name, parallel_system_names=[]):
 				unpack_params(best_min.x, system)
 				write_reax_file(system,best=True)
 				print 'New best error = %.4g' % best_min.fun
+
+				# For refreshing the bounds:
+				# print 'New best error number %3d = %10.4g' % (len(param_hist[1]),best_min.fun)
+				# param_hist=extend_parameter_history(param_hist,best_min.x)
+				# if len(param_hist[1])==60:
+				# 	param_hist, bounds, log = rebound(param_hist)
+				# log.write(str(best_min.x)+' ' +str(best_min.fun)+'\n')
+
 		return best_min
 
 	stochastic(False)
