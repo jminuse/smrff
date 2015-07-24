@@ -558,7 +558,7 @@ def run(system_name, parallel_system_names=[]):
 	compute atom_pe all pe/atom
 	compute		test_pe all reduce sum c_atom_pe
 	thermo_style custom pe c_test_pe
-	pair_coeff * * ../input_new.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
+	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
 	fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 	''').splitlines()
 	lmp = lammps('',['-log',system.name+'.log','-screen','none'])
@@ -686,4 +686,6 @@ def run(system_name, parallel_system_names=[]):
 
 	stochastic(False)
 
+run('1', ['2'])
+#run('2', ['1'])
 

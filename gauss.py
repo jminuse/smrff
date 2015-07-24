@@ -65,9 +65,11 @@ def change_cml():
 	for root, dirs, file_list in os.walk("gaussian"):
 		for ff in file_list:
 			if ff.endswith('.cml') and 'Cl2' in ff:
-				new_contents = open('gaussian/'+ff).read().replace('I', 'Cl')
-				open('gaussian/'+ff, 'w').write(new_contents)
-
+				try:
+					new_contents = open('gaussian/'+ff.replace('Cl', 'I')).read().replace('I', 'Cl')
+					open('gaussian/'+ff, 'w').write(new_contents)
+				except:
+					pass
 def new_cl_jobs():
 	for i in range(1,20):
 		atoms = g09.atoms('PbCl2_opt_def2SVP')
@@ -78,5 +80,5 @@ def new_cl_jobs():
 		g09.job(name, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None).wait()
 		shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
 
-new_cl_jobs()
+change_cml()
 
