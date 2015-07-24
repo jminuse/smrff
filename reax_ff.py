@@ -724,16 +724,16 @@ def run(system_name, other_system_names=[]):
 
 		while True:
 			if use_gradient:
-				params = new_param_guess(best_min.x, gauss=True)
+				params = new_param_guess(best_min.x, gauss=False)
 				start_error = calculate_error_from_list(params)
-				while start_error > 2.0:
-					params = new_param_guess(best_min.x, gauss=True)
-					start_error = calculate_error_from_list(params)
+				#while start_error > 2.0:
+				#	params = new_param_guess(best_min.x, gauss=True)
+				#	start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
 				guess = utils.Struct(fun=fun,x=x)
 				print system.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
-				params = new_param_guess(best_min.x, gauss=True)
+				params = new_param_guess(best_min.x, gauss=False)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 				#print system.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
@@ -751,7 +751,7 @@ def run(system_name, other_system_names=[]):
 
 		return best_min
 
-	stochastic(False)
+	stochastic(True)
 
 from multiprocessing import Process, Queue
 
