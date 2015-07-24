@@ -485,176 +485,205 @@ def unpack_params(params, system):
 				thbp[i] = params[p]
 				p += 1
 
-Cl_ = 66
-H_ = 54
-N_ = 53
-Pb_ = 111
+def run(system_name, parallel_system_names=[]):
+	Cl_ = 66
+	H_ = 54
+	N_ = 53
+	Pb_ = 111
 
-Pb = 907
-Cl = 838
+	Pb = 907
+	Cl = 838
 
-extra = {
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.0, vdw_r=3.0),
-	Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.0, vdw_r=3.0),
-}
+	extra = {
+		Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.0, vdw_r=3.0),
+		Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.0, vdw_r=3.0),
+	}
 
-system = utils.System(box_size=[100, 100, 100], name='test_reax')
+	system = utils.System(box_size=[100, 100, 100], name=system_name)
 
-for root, dirs, file_list in os.walk("gaussian"):
-	count = 0
-	for ff in file_list:
-		if ff.endswith('.log'):
-			name = ff[:-4]
-			if not name.startswith('PbCl2'): continue
-			if not name.endswith('_def2SVP'): continue
-			energy, atoms = g09.parse_atoms(name, check_convergence=False)
-			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
-			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
-			total.element_string = ' '.join( [a.element for a in total.atoms] )
-			print 'Read', total.element_string, 'from', name
-			for i,a in enumerate(total.atoms):
-				b = atoms[i]
-				a.x, a.y, a.z = b.x, b.y, b.z
-				a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
-			system.add(total, count*100.0)
-			count += 1
-#make system big enough to hold all atoms
-system.box_size[0] = max(system.atoms, key=lambda a:a.x).x-min(system.atoms, key=lambda a:a.x).x
-system.box_size[1] = max(system.atoms, key=lambda a:a.y).y-min(system.atoms, key=lambda a:a.y).y
-system.box_size[2] = max(system.atoms, key=lambda a:a.z).z-min(system.atoms, key=lambda a:a.z).z
-#center atoms
-for a in system.atoms:
-	a.x -= system.box_size[0]*0.5
-system.box_size[0] += 100
-system.box_size[1] += 10
-system.box_size[2] += 10
-#group molecules by .element_string
-system.molecules_by_elements = {}
-for m in system.molecules:
-	if m.element_string not in system.molecules_by_elements:
-		system.molecules_by_elements[ m.element_string ] = []
-	system.molecules_by_elements[ m.element_string ].append(m)
-#sort molecules of same type by energy, set baseline energy as zero
-for element_string, molecules in system.molecules_by_elements.iteritems():
-	molecules.sort(key=lambda m:m.energy)
-	baseline_energy = molecules[0].energy
-	for m in molecules:
-		m.energy -= baseline_energy #baseline energy = 0.0
+	for root, dirs, file_list in os.walk("gaussian"):
+		count = 0
+		for ff in file_list:
+			if ff.endswith('.log'):
+				name = ff[:-4]
+				if not name.startswith('PbCl2'): continue
+				if not name.endswith('_def2SVP'): continue
+				energy, atoms = g09.parse_atoms(name, check_convergence=False)
+				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
+				total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
+				total.element_string = ' '.join( [a.element for a in total.atoms] )
+				print 'Read', total.element_string, 'from', name
+				for i,a in enumerate(total.atoms):
+					b = atoms[i]
+					a.x, a.y, a.z = b.x, b.y, b.z
+					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
+				system.add(total, count*100.0)
+				count += 1
+	#make system big enough to hold all atoms
+	system.box_size[0] = max(system.atoms, key=lambda a:a.x).x-min(system.atoms, key=lambda a:a.x).x
+	system.box_size[1] = max(system.atoms, key=lambda a:a.y).y-min(system.atoms, key=lambda a:a.y).y
+	system.box_size[2] = max(system.atoms, key=lambda a:a.z).z-min(system.atoms, key=lambda a:a.z).z
+	#center atoms
+	for a in system.atoms:
+		a.x -= system.box_size[0]*0.5
+	system.box_size[0] += 100
+	system.box_size[1] += 10
+	system.box_size[2] += 10
+	#group molecules by .element_string
+	system.molecules_by_elements = {}
+	for m in system.molecules:
+		if m.element_string not in system.molecules_by_elements:
+			system.molecules_by_elements[ m.element_string ] = []
+		system.molecules_by_elements[ m.element_string ].append(m)
+	#sort molecules of same type by energy, set baseline energy as zero
+	for element_string, molecules in system.molecules_by_elements.iteritems():
+		molecules.sort(key=lambda m:m.energy)
+		baseline_energy = molecules[0].energy
+		for m in molecules:
+			m.energy -= baseline_energy #baseline energy = 0.0
 
-os.chdir('lammps')
-files.write_lammps_data(system)
+	os.chdir('lammps')
+	files.write_lammps_data(system)
 
-commands = ('''units real
-atom_style full
-pair_style reax/c NULL
-bond_style harmonic
-angle_style harmonic
-dihedral_style opls
+	commands = ('''units real
+	atom_style full
+	pair_style reax/c NULL
+	bond_style harmonic
+	angle_style harmonic
+	dihedral_style opls
 
-boundary f f f
-read_data	'''+system.name+'''.data
+	boundary f f f
+	read_data	'''+system.name+'''.data
 
-compute atom_pe all pe/atom
-compute		test_pe all reduce sum c_atom_pe
-thermo_style custom pe c_test_pe
-pair_coeff * * ../input_new.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
-fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
-''').splitlines()
-lmp = lammps('',['-log',system.name+'.log','-screen','none'])
-for line in commands:
-	lmp.command(line)
+	compute atom_pe all pe/atom
+	compute		test_pe all reduce sum c_atom_pe
+	thermo_style custom pe c_test_pe
+	pair_coeff * * ../input_new.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
+	fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+	''').splitlines()
+	lmp = lammps('',['-log',system.name+'.log','-screen','none'])
+	for line in commands:
+		lmp.command(line)
 
-system.reax_params = read_reax_file('../input.reax')
-system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
+	system.reax_params = read_reax_file('../input.reax')
+	system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
 
-def calculate_error_from_list(params):
-	unpack_params(params, system)
-	for t in system.atom_types + system.bond_types + system.angle_types + system.dihedral_types:
-		t.written_to_lammps = False
-	error = calculate_error(system)
-	return error
+	def calculate_error_from_list(params):
+		unpack_params(params, system)
+		for t in system.atom_types + system.bond_types + system.angle_types + system.dihedral_types:
+			t.written_to_lammps = False
+		error = calculate_error(system)
+		return error
 
-initial_params, names = pack_params(system)
+	initial_params, names = pack_params(system)
 
-print "Parametrization on:"
-print '      Variable         Initial         Bounds'
-for x,y,z in zip(names,initial_params,bounds):
-	print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
+	print "Parametrization on:"
+	print '      Variable         Initial         Bounds'
+	for x,y,z in zip(names,initial_params,bounds):
+		print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
-import numpy
-from scipy.optimize import minimize, fmin_l_bfgs_b
-
-def stochastic(use_gradient=True):
-	best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-	print 'Error: %.4g' % best_min.fun
-	#exit()
-	
-	def new_param_guess(start):
-		while True: #keep going until new params are generated
-			params = []
-			for p,b in zip(start, bounds):
-				new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
-				#reflect
-				if new < b[0]:
-					new += (b[0]-new)
-				elif new > b[1]:
-					new -= (b[1]-new)
-				#just set
-				if new < b[0]:
-					new = b[0]
-				elif new > b[1]:
-					new = b[1]
-				params.append( new )
-			if cmp(list(params), list(start)) != 0: #compare old and new param lists
-				return params
-	
-	def error_gradient(x):
-		e0 = calculate_error_from_list(x)
-		gradient = []
-		for i in range(len(x)):
-			if bounds[i]==(0.0,0.0):
-				gradient.append(0.0)
-				continue
-			oldx = x[i]
-			sign_oldx = -1 if oldx<0 else 1
-			newx = oldx + 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
-			if newx>bounds[i][1] or newx<bounds[i][0]:
-				newx = oldx - 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
-			if newx>bounds[i][1] or newx<bounds[i][0]:
-				print oldx, newx, bounds[i][0], bounds[i][1]
-				exit()
-			dif = newx - oldx
-			if dif != 0.0:
-				x[i] = newx
-				gradient.append( (calculate_error_from_list(x)-e0)/dif )
-				x[i] = oldx
+	#get params from other systems
+	others = [utils.System(name=n) for n in other_system_names]
+	def check_other_systems(others):
+		for other in others:
+			if os.path.exists('../'+other.name+'_best.reax'):
+				other.reax_params = [utils.Struct(reax_params=read_reax_file('../'+other.name+'_best.reax')[0]) ]
 			else:
-				print 'dif=0.0 in numerical gradient!'
-				print newx, oldx, (bounds[i][0], bounds[i][1])
-				exit()
-		return numpy.array(gradient)
+				other.reax_params = None
+			other.reax_includes = system.reax_includes
+			other.list, _ = pack_params(other)
+	how_long_since_checked_other_systems = 0
 	
-	while True:
-	#for step in range(10000):
-		params = new_param_guess(best_min.x)
-		if use_gradient:
-			start_error = calculate_error_from_list(params)
-			while start_error > 2.0:
-				params = new_param_guess(best_min.x)
+	#optimize
+	import numpy
+	from scipy.optimize import minimize, fmin_l_bfgs_b
+
+	def stochastic(use_gradient=True):
+		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
+		print 'Error: %.4g' % best_min.fun
+		#exit()
+	
+		def new_param_guess(start):
+			how_long_since_checked_other_systems += 1
+			if how_long_since_checked_other_systems > 1000:
+				check_other_systems(others)
+				how_long_since_checked_other_systems = 0
+			
+			while True: #keep going until new params are generated
+				params = []
+				for p,b in zip(start, bounds):
+					new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
+					#reflect
+					if new < b[0]:
+						new += (b[0]-new)
+					elif new > b[1]:
+						new -= (b[1]-new)
+					#just set
+					if new < b[0]:
+						new = b[0]
+					elif new > b[1]:
+						new = b[1]
+					params.append( new )
+				if cmp(list(params), list(start)) == 0: #if new param list is the same as old one
+					continue
+				else:
+					#keep different solutions apart
+					if others:
+						distances = []
+						for other in others:
+							distances.append( sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(others.list, params, bounds)])**0.5 )
+						if all( [ d>0.01*len(params) for d in distances ] ):
+							return params
+					else:
+						return params
+	
+		def error_gradient(x):
+			e0 = calculate_error_from_list(x)
+			gradient = []
+			for i in range(len(x)):
+				if bounds[i]==(0.0,0.0):
+					gradient.append(0.0)
+					continue
+				oldx = x[i]
+				sign_oldx = -1 if oldx<0 else 1
+				newx = oldx + 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
+				if newx>bounds[i][1] or newx<bounds[i][0]:
+					newx = oldx - 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
+				if newx>bounds[i][1] or newx<bounds[i][0]:
+					print oldx, newx, bounds[i][0], bounds[i][1]
+					exit()
+				dif = newx - oldx
+				if dif != 0.0:
+					x[i] = newx
+					gradient.append( (calculate_error_from_list(x)-e0)/dif )
+					x[i] = oldx
+				else:
+					print 'dif=0.0 in numerical gradient!'
+					print newx, oldx, (bounds[i][0], bounds[i][1])
+					exit()
+			return numpy.array(gradient)
+	
+		while True:
+		#for step in range(10000):
+			params = new_param_guess(best_min.x)
+			if use_gradient:
 				start_error = calculate_error_from_list(params)
-			x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
-			guess = utils.Struct(fun=fun,x=x)
-			print 'Error', start_error, guess.fun, best_min.fun
-		else:
-			guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-			print 'Error', guess.fun, best_min.fun
-		if guess.fun < best_min.fun:
-			best_min = guess
-			unpack_params(best_min.x, system)
-			write_reax_file(system,best=True)
-			print 'New best error = %.4g' % best_min.fun
-	return best_min
+				while start_error > 2.0:
+					params = new_param_guess(best_min.x)
+					start_error = calculate_error_from_list(params)
+				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
+				guess = utils.Struct(fun=fun,x=x)
+				print 'Error', start_error, guess.fun, best_min.fun
+			else:
+				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
+				print 'Error', guess.fun, best_min.fun
+			if guess.fun < best_min.fun:
+				best_min = guess
+				unpack_params(best_min.x, system)
+				write_reax_file(system,best=True)
+				print 'New best error = %.4g' % best_min.fun
+		return best_min
 
+	stochastic(False)
 
-stochastic(False)
 
