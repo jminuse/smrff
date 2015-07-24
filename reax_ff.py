@@ -129,57 +129,23 @@ def read_reax_include_file(filename,params):
 				bounds.append(b)
 				reax.atom_types[i][0].append(b)
 
-		col = f.readline().split()
-		reax.atom_types[i].append([])
-		for index,item in enumerate(col):
-			if item == '0':
-				reax.atom_types[i][1].append(0)
-			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
-				if not m:
-					b = (params.atom_types[i][1][index] * default_bound_mults[0],params.atom_types[i][1][index] * default_bound_mults[1])
+		for line in [1,2,3]:
+			col = f.readline().split()
+			reax.atom_types[i].append([])
+			for index,item in enumerate(col):
+				if item == '0':
+					reax.atom_types[i][line].append(0)
 				else:
-					b = (float(m.group(1)),float(m.group(2)))
-				b = tuple(sorted(b))
-				if b == (0,0):
-					b = default_bounds_zero_value
-				bounds.append(b)
-				reax.atom_types[i][1].append(b)
-		
-		col = f.readline().split()		
-		reax.atom_types[i].append([])
-		for index,item in enumerate(col):
-			if item == '0':
-				reax.atom_types[i][2].append(0)
-			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
-				if not m:
-					b = (params.atom_types[i][2][index] * default_bound_mults[0],params.atom_types[i][2][index] * default_bound_mults[1]) 
-				else:
-					b = (float(m.group(1)),float(m.group(2)))
-				b = tuple(sorted(b))
-				if b == (0,0):
-					b = default_bounds_zero_value
-				bounds.append(b)
-				reax.atom_types[i][2].append(b)
-
-
-		col = f.readline().split()
-		reax.atom_types[i].append([])
-		for index,item in enumerate(col):
-			if item == '0':
-				reax.atom_types[i][3].append(0)
-			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
-				if not m:
-					b =  (params.atom_types[i][3][index] * default_bound_mults[0],params.atom_types[i][3][index] * default_bound_mults[1]) 
-				else:
-					b = (float(m.group(1)),float(m.group(2)))
-				b = tuple(sorted(b))
-				if b == (0,0):
-					b = default_bounds_zero_value
-				bounds.append(b)
-				reax.atom_types[i][3].append(b)
+					m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+					if not m:
+						b = (params.atom_types[i][line][index] * default_bound_mults[0],params.atom_types[i][line][index] * default_bound_mults[1])
+					else:
+						b = (float(m.group(1)),float(m.group(2)))
+					b = tuple(sorted(b))
+					if b == (0,0):
+						b = default_bounds_zero_value
+					bounds.append(b)
+					reax.atom_types[i][line].append(b)
 
 	reax.number_bonds = int(re.search('\s*([0-9]+)\s+\!(.*)',f.readline()).group(1))
 	f.readline()
