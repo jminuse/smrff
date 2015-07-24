@@ -336,29 +336,29 @@ def write_reax_file(system, best=False):
 
 def set_lammps_parameters(system):
 	write_reax_file(system)
-	lmp.command('unfix 1')
-	lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
-	lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
+	system.lmp.command('unfix 1')
+	system.lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	system.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 	
 	for t in system.atom_types:
 		pass
 		#if hasattr(t,'vdw_e'):
-		#	lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
-		#	lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
+		#	system.lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
+		#	system.lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
 	for t in system.bond_types:
-		lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
+		system.lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
 	for t in system.angle_types:
-		lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
+		system.lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
 	for t in system.dihedral_types:
-		lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
+		system.lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
-	lmp.command('run 1')
-	lammps_energies = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
-	lammps_forces = lmp.extract_atom('f',3)
+	system.lmp.command('run 1')
+	lammps_energies = system.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
+	lammps_forces = system.lmp.extract_atom('f',3)
 	
 	#assign energies to their proper groups of atoms
 	atom_count = 0
@@ -372,8 +372,10 @@ def calculate_error(system):
 		baseline_energy = molecules[0].lammps_energy #should be in order of increasing energy
 		for m in molecules:
 			m.lammps_energy -= baseline_energy
-			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
-			absolute_energy_error += (m.lammps_energy-m.energy)**2
+			try:
+				relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
+				absolute_energy_error += (m.lammps_energy-m.energy)**2
+			except OverflowError: return 1e10
 			#print m.energy, m.lammps_energy
 	#exit()
 	#calculate force error
@@ -381,9 +383,11 @@ def calculate_error(system):
 	for i,a in enumerate(system.atoms):
 		fx, fy, fz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 		real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
-		#if real_force_squared < 20.0**2:
-		relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
-		absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
+		try:
+			relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
+			absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
+		except OverflowError:
+			return 1e10
 	
 	relative_force_error = math.sqrt( relative_force_error/len(system.atoms) )
 	absolute_force_error = math.sqrt( absolute_force_error/len(system.atoms) )
@@ -394,7 +398,10 @@ def calculate_error(system):
 	
 	#print 'Error components:', absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
 	
-	return error
+	if math.isnan(error):
+		return 1e10
+	else:
+		return error
 
 def pack_params(system):
 	params, names = [], []
@@ -485,7 +492,7 @@ def unpack_params(params, system):
 				thbp[i] = params[p]
 				p += 1
 
-def run(system_name, parallel_system_names=[]):
+def run(system_name, other_system_names=[]):
 	Cl_ = 66
 	H_ = 54
 	N_ = 53
@@ -561,9 +568,9 @@ def run(system_name, parallel_system_names=[]):
 	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
 	fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 	''').splitlines()
-	lmp = lammps('',['-log',system.name+'.log','-screen','none'])
+	system.lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 	for line in commands:
-		lmp.command(line)
+		system.lmp.command(line)
 
 	system.reax_params = read_reax_file('../input.reax')
 	system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
@@ -583,16 +590,18 @@ def run(system_name, parallel_system_names=[]):
 		print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
 	#get params from other systems
-	others = [utils.System(name=n) for n in other_system_names]
-	def check_other_systems(others):
-		for other in others:
+	system.others = [utils.System(name=n) for n in other_system_names]
+	def check_others(system):
+		for other in system.others:
+			other.bond_types, other.angle_types, other.dihedral_types, = [], [], []
 			if os.path.exists('../'+other.name+'_best.reax'):
 				other.reax_params = [utils.Struct(reax_params=read_reax_file('../'+other.name+'_best.reax')[0]) ]
+				other.reax_includes = system.reax_includes
+				other.list, _ = pack_params(other)
 			else:
-				other.reax_params = None
-			other.reax_includes = system.reax_includes
-			other.list, _ = pack_params(other)
-	how_long_since_checked_other_systems = 0
+				other.list = None
+		system.how_long_since_checked_others = 0
+	check_others(system)
 	
 	#optimize
 	import numpy
@@ -600,38 +609,43 @@ def run(system_name, parallel_system_names=[]):
 
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-		print 'Error: %.4g' % best_min.fun
+		print system.name, 'starting error: %.4g' % best_min.fun
 		#exit()
 	
-		def new_param_guess(start):
-			how_long_since_checked_other_systems += 1
-			if how_long_since_checked_other_systems > 1000:
-				check_other_systems(others)
-				how_long_since_checked_other_systems = 0
+		def new_param_guess(start, gauss=True):
+			system.how_long_since_checked_others += 1
+			if system.how_long_since_checked_others > 10:
+				check_others(system)
 			
 			while True: #keep going until new params are generated
 				params = []
 				for p,b in zip(start, bounds):
-					new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
-					#reflect
-					if new < b[0]:
-						new += (b[0]-new)
-					elif new > b[1]:
-						new -= (b[1]-new)
-					#just set
-					if new < b[0]:
-						new = b[0]
-					elif new > b[1]:
-						new = b[1]
+					if gauss: #Gaussian random
+						new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
+						#reflect
+						if new < b[0]:
+							new += (b[0]-new)
+						elif new > b[1]:
+							new -= (b[1]-new)
+						#just set
+						if new < b[0]:
+							new = b[0]
+						elif new > b[1]:
+							new = b[1]
+					else: #uniform random
+						new = b[0] + random.random()*(b[1]-b[0])
 					params.append( new )
 				if cmp(list(params), list(start)) == 0: #if new param list is the same as old one
 					continue
 				else:
 					#keep different solutions apart
-					if others:
+					if system.others:
 						distances = []
-						for other in others:
-							distances.append( sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(others.list, params, bounds)])**0.5 )
+						for other in system.others:
+							if other.list:
+								distances.append( sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(others.list, params, bounds)])**0.5 )
+							else:
+								distances.append(1e6)
 						if all( [ d>0.01*len(params) for d in distances ] ):
 							return params
 					else:
@@ -701,24 +715,24 @@ def run(system_name, parallel_system_names=[]):
 	# log.write('#'+str(bounds)+'\n')
 
 		while True:
-		#for step in range(10000):
-			params = new_param_guess(best_min.x)
 			if use_gradient:
+				params = new_param_guess(best_min.x, gauss=False)
 				start_error = calculate_error_from_list(params)
 				while start_error > 2.0:
-					params = new_param_guess(best_min.x)
+					params = new_param_guess(best_min.x, gauss=False)
 					start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
 				guess = utils.Struct(fun=fun,x=x)
-				print 'Error', start_error, guess.fun, best_min.fun
-			else:
+				print system.name, 'error', start_error, guess.fun, best_min.fun
+			else: #non-gradient optimization
+				params = new_param_guess(best_min.x, gauss=False)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-				print 'Error', guess.fun, best_min.fun
+				#print system.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
 				best_min = guess
 				unpack_params(best_min.x, system)
 				write_reax_file(system,best=True)
-				print 'New best error = %.4g' % best_min.fun
+				print system.name, 'new best error = %.4g' % best_min.fun
 
 				# For refreshing the bounds:
 				# print 'New best error number %3d = %10.4g' % (len(param_hist[1]),best_min.fun)
@@ -731,6 +745,12 @@ def run(system_name, parallel_system_names=[]):
 
 	stochastic(False)
 
-run('1', ['2'])
-#run('2', ['1'])
+from multiprocessing import Process, Queue
+
+N = 4
+queue = Queue()
+for i in range(N):
+	p = Process(target=run, args=(str(i), [str(other) for other in range(N) if other!=i]))
+	p.start()
+
 
