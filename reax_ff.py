@@ -320,16 +320,16 @@ def write_reax_file(system, best=False):
 		f.write(' '*2 + rp.thbps[i][0] + ' '*2 +  rp.thbps[i][1] + ' '*2 +  rp.thbps[i][2] + ' '*10 + spaced_numbered_list(rp.thbps[i][3:]) + '  \n')
 
 	# Print Torsional terms:
-	if rp.number_torsional:
-		f.write(trim_spaces(rp.number_torsional,3,1) + '    ! ' + rp.torsional_c + '  \n')
-		for i in range(rp.number_torsional):
-			f.write(' '*2 + rp.torsional[i][0] + ' '*2 +  rp.torsional[i][1] + ' '*2 +  rp.torsional[i][2] +' '*2 +  rp.torsional[i][3] + ' ' + spaced_numbered_list(rp.torsional[i][4:]) + '  \n')
+	# if rp.number_torsional:
+	f.write(trim_spaces(rp.number_torsional,3,1) + '    ! ' + rp.torsional_c + '  \n')
+	for i in range(rp.number_torsional):
+		f.write(' '*2 + rp.torsional[i][0] + ' '*2 +  rp.torsional[i][1] + ' '*2 +  rp.torsional[i][2] +' '*2 +  rp.torsional[i][3] + ' ' + spaced_numbered_list(rp.torsional[i][4:]) + '  \n')
 
 	# Print Hydrogen Bonds:
-	if rp.number_hydrogen:
-		f.write(trim_spaces(rp.number_hydrogen,3,1) + '    ! ' + rp.hydrogen_c + '  \n')
-		for i in range(rp.number_hydrogen):
-			f.write(' '*2 + rp.hydrogen[i][0] + ' '*2 +  rp.hydrogen[i][1] + ' '*2 +  rp.hydrogen[i][2] + ' ' + spaced_numbered_list(rp.hydrogen[i][3:]) + '  \n')
+	# if rp.number_hydrogen:
+	f.write(trim_spaces(rp.number_hydrogen,3,1) + '    ! ' + rp.hydrogen_c + '  \n')
+	for i in range(rp.number_hydrogen):
+		f.write(' '*2 + rp.hydrogen[i][0] + ' '*2 +  rp.hydrogen[i][1] + ' '*2 +  rp.hydrogen[i][2] + ' ' + spaced_numbered_list(rp.hydrogen[i][3:]) + '  \n')
 
 	f.close()
 
@@ -583,6 +583,14 @@ def run(system_name, other_system_names=[]):
 		return error
 
 	initial_params, names = pack_params(system)
+	for i in range(len(names)):
+		if names[i].endswith('gamma_w'):
+			if bounds[i][0]<=.5:
+				print names[i] + ' was bounded by ' +  str(bounds[i]) + 'changing to (.501,%f)' % bounds[i][1]
+				bounds[i]=(.501,bounds[i][1])
+			if bounds[i][1]<=.5:
+				print names[i] + ' bounds were unacceptable, they have been changed to (.501,45).'
+				bounds[i][1]=(bounds[i][0],45)
 
 	print "Parametrization on:"
 	print '      Variable         Initial         Bounds'
@@ -611,7 +619,6 @@ def run(system_name, other_system_names=[]):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print system.name, 'starting error: %.4g' % best_min.fun
 		#exit()
-	
 		def new_param_guess(start, gauss=True):
 			system.how_long_since_checked_others += 1
 			if system.how_long_since_checked_others > 10:
