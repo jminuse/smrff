@@ -576,6 +576,14 @@ def run(system_name, other_system_names=[]):
 		return error
 
 	initial_params, names = pack_params(system)
+	for i in range(len(names)):
+		if names[i].endswith('gamma_w'):
+			if bounds[i][0]<=.5:
+				print names[i] + ' was bounded by ' +  bounds[i] + 'changing to (.501,%f)' % bounds[i][1]
+				bounds[i]=(.501,bounds[i][1])
+			if bounds[i][1]<=.5:
+				print names[i] + ' bounds were unacceptable, they have been changed to (.501,45).'
+				bounds[i][1]=(bounds[i][0],45)
 
 	print "Parametrization on:"
 	print '      Variable         Initial         Bounds'
