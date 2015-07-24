@@ -44,5 +44,39 @@ def from_md():
 		#g09.job('PbI2_PbI2_%d_def2SVP' % i, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None).wait()
 		shutil.copyfile('gaussian/PbI2_PbI2.cml', 'gaussian/PbI2_PbI2_%d_def2SVP.cml' % i)
 
-from_md()
+def make_cl():
+	for root, dirs, file_list in os.walk("gaussian"):
+		for ff in file_list:
+			if ff.endswith('.log'):
+				name = ff[:-4]
+				if not name.startswith('PbI2'): continue
+				if not name.endswith('_def2SVP'): continue
+				new_name = name.replace('I', 'Cl')
+				atoms = g09.atoms(name)
+				for a in atoms:
+					if a.element=='I':
+						a.element = 'Cl'
+				if not os.path.exists('gaussian/'+new_name+'.log'):
+					g09.job(new_name, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None).wait()
+				#shutil.copyfile('gaussian/'+name+'.cml', 'gaussian/'+new_name+'.cml')
+				print new_name, 'done'
+	
+def change_cml():
+	for root, dirs, file_list in os.walk("gaussian"):
+		for ff in file_list:
+			if ff.endswith('.cml') and 'Cl2' in ff:
+				new_contents = open('gaussian/'+ff).read().replace('I', 'Cl')
+				open('gaussian/'+ff, 'w').write(new_contents)
+
+def new_cl_jobs():
+	for i in range(1,20):
+		atoms = g09.atoms('PbCl2_opt_def2SVP')
+		atoms[2].x += 5.0*random.random()
+		atoms[2].y += 1.0*(2-random.random())
+		atoms[2].z += 1.0*(2-random.random())
+		name = 'PbCl2_p%d_def2SVP' % i
+		g09.job(name, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None).wait()
+		shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
+
+new_cl_jobs()
 

@@ -337,7 +337,7 @@ def write_reax_file(system, best=False):
 def set_lammps_parameters(system):
 	write_reax_file(system)
 	lmp.command('unfix 1')
-	lmp.command('pair_coeff * * '+system.name+'.reax Pb I '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
 	lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 	
 	for t in system.atom_types:
@@ -485,17 +485,17 @@ def unpack_params(params, system):
 				thbp[i] = params[p]
 				p += 1
 
-I_ = 66
+Cl_ = 66
 H_ = 54
 N_ = 53
 Pb_ = 111
 
 Pb = 907
-I = 838
+Cl = 838
 
 extra = {
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=1.0, vdw_e=0.1, vdw_r=3.0),
-	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.5, vdw_e=0.1, vdw_r=3.0),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.0, vdw_r=3.0),
+	Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.0, vdw_r=3.0),
 }
 
 system = utils.System(box_size=[100, 100, 100], name='test_reax')
@@ -505,14 +505,9 @@ for root, dirs, file_list in os.walk("gaussian"):
 	for ff in file_list:
 		if ff.endswith('.log'):
 			name = ff[:-4]
-	#for step in range(20):
-	#		name = 'PbI2_r%d' % step
-			if not name.startswith('PbI2'): continue
+			if not name.startswith('PbCl2'): continue
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name, check_convergence=False)
-			#if any([utils.dist(atoms[0], a)>3.5 for a in atoms]) and len(atoms)<6: continue
-			if name.startswith('PbI2_l'): continue
-			# if name.startswith('PbI2_c'): continue
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 			total.element_string = ' '.join( [a.element for a in total.atoms] )
@@ -562,7 +557,7 @@ read_data	'''+system.name+'''.data
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
 thermo_style custom pe c_test_pe
-pair_coeff * * ../input_new.reax Pb I '''+(' NULL'*(len(system.atom_types)-2))+'''
+pair_coeff * * ../input_new.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 ''').splitlines()
 lmp = lammps('',['-log',system.name+'.log','-screen','none'])
