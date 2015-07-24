@@ -516,6 +516,7 @@ def run(system_name, other_system_names=[]):
 				if not name.startswith('PbCl2'): continue
 				if not name.endswith('_def2SVP'): continue
 				energy, atoms = g09.parse_atoms(name, check_convergence=False)
+				if len(atoms)!=3: continue
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 				total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 				total.element_string = ' '.join( [a.element for a in total.atoms] )
@@ -723,16 +724,16 @@ def run(system_name, other_system_names=[]):
 
 		while True:
 			if use_gradient:
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				start_error = calculate_error_from_list(params)
 				while start_error > 2.0:
-					params = new_param_guess(best_min.x, gauss=False)
+					params = new_param_guess(best_min.x, gauss=True)
 					start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
 				guess = utils.Struct(fun=fun,x=x)
 				print system.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 				#print system.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
@@ -754,7 +755,7 @@ def run(system_name, other_system_names=[]):
 
 from multiprocessing import Process, Queue
 
-N = 4
+N = 8
 queue = Queue()
 for i in range(N):
 	p = Process(target=run, args=(str(i), [str(other) for other in range(N) if other!=i]))
