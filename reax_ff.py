@@ -118,17 +118,11 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][0].append(0)
 			else:
-<<<<<<< HEAD
-			 	m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.])+',item)
-				if ',' in item:
-					b = [float(s) for s in item.split(',')]
-=======
-			 	m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+			 	m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
->>>>>>> 9cfbe90ba10607761a8d79f615db11be148583a0
 				else:
-					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
+					b = (float(m.group(1)),float(m.group(2)))
 				b = tuple(sorted(b))
 				if b == (0,0):
 					b = default_bounds_zero_value
@@ -141,7 +135,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][1].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b = (params.atom_types[i][1][index] * default_bound_mults[0],params.atom_types[i][1][index] * default_bound_mults[1])
 				else:
@@ -158,7 +152,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][2].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b = (params.atom_types[i][2][index] * default_bound_mults[0],params.atom_types[i][2][index] * default_bound_mults[1]) 
 				else:
@@ -176,7 +170,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][3].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.atom_types[i][3][index] * default_bound_mults[0],params.atom_types[i][3][index] * default_bound_mults[1]) 
 				else:
@@ -197,7 +191,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.bonds[i][0].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b = (params.bonds[i][0][index] * default_bound_mults[0],params.bonds[i][0][index] * default_bound_mults[1]) 
 				else:
@@ -214,7 +208,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.bonds[i][1].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.bonds[i][1][index] * default_bound_mults[0],params.bonds[i][1][index] * default_bound_mults[1]) 
 				else:
@@ -233,7 +227,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.offdiags[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.offdiags[i][index] * default_bound_mults[0],params.offdiags[i][index] * default_bound_mults[1]) 
 				else:
@@ -252,7 +246,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.thbps[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.thbps[i][index] * default_bound_mults[0],params.thbps[i][index] * default_bound_mults[1]) 
 				else:
@@ -271,7 +265,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.torsional[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.torsional[i][index] * default_bound_mults[0],params.torsional[i][index] * default_bound_mults[1]) 
 				else:
@@ -290,7 +284,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.hydrogen[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)+',item)
+				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.hydrogen[i][index] * default_bound_mults[0],params.hydrogen[i][index] * default_bound_mults[1]) 
 				else:
@@ -338,26 +332,26 @@ def write_reax_file(system, best=False):
 		s=' '*2
 		if len(rp.atom_types[i][0][0]) == 2:  s = ' '
 		f.write(' ' +rp.atom_types[i][0][0] + s + spaced_numbered_list(rp.atom_types[i][0][1:]) +'  \n')
-		f.write(' '*4 + spaced_numbered_list(rp.atom_types[i][1]) +'  \n')
-		f.write(' '*4 + spaced_numbered_list(rp.atom_types[i][2]) +'  \n')
-		f.write(' '*4 + spaced_numbered_list(rp.atom_types[i][3]) +'  \n')
+		f.write(' '*14 + spaced_numbered_list(rp.atom_types[i][1]) +'  \n')
+		f.write(' '*14 + spaced_numbered_list(rp.atom_types[i][2]) +'  \n')
+		f.write(' '*14 + spaced_numbered_list(rp.atom_types[i][3]) +'  \n')
 
 	# Print bond types:
 	f.write(trim_spaces(rp.number_bonds,3,1) + '    ! ' + rp.bond_types_c + '  \n')
 	for i in range(rp.number_bonds):
 		s=' '*2
-		f.write(' '*2+rp.bonds[i][0][0] + ' '*2  + rp.bonds[i][0][1] + ' ' + spaced_numbered_list(rp.bonds[i][0][2:]) +'  \n')
-		f.write(' '*7 + spaced_numbered_list(rp.bonds[i][1]) + '  \n')
+		f.write(' '*2+rp.bonds[i][0][0] + ' '*2  + rp.bonds[i][0][1] + ' '*12 + spaced_numbered_list(rp.bonds[i][0][2:]) +'  \n')
+		f.write(' '*20 + spaced_numbered_list(rp.bonds[i][1]) + '  \n')
 	
 	# Print Off-Diagonal Terms:
 	f.write(trim_spaces(rp.number_offdiags,3,1) + '    ! ' + rp.offdiags_c + '  \n')
 	for i in range(rp.number_offdiags):
-		f.write(' '*2 + rp.offdiags[i][0] + ' '*2 +  rp.offdiags[i][1] + ' ' + spaced_numbered_list(rp.offdiags[i][2:]) + '  \n')
+		f.write(' '*2 + rp.offdiags[i][0] + ' '*2 +  rp.offdiags[i][1] + ' '*10 + spaced_numbered_list(rp.offdiags[i][2:]) + '  \n')
 
 	# Print Three-Body Parameters:
 	f.write(trim_spaces(rp.number_threebody,3,1) + '    ! ' + rp.three_body_c + '  \n')
 	for i in range(rp.number_threebody):
-		f.write(' '*2 + rp.thbps[i][0] + ' '*2 +  rp.thbps[i][1] + ' '*2 +  rp.thbps[i][2] + ' ' + spaced_numbered_list(rp.thbps[i][3:]) + '  \n')
+		f.write(' '*2 + rp.thbps[i][0] + ' '*2 +  rp.thbps[i][1] + ' '*2 +  rp.thbps[i][2] + ' '*10 + spaced_numbered_list(rp.thbps[i][3:]) + '  \n')
 
 	# Print Torsional terms:
 	if rp.number_torsional:
@@ -396,7 +390,7 @@ def calculate_error(system):
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
-	lmp.command('run 10')
+	lmp.command('run 1')
 	lammps_energies = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 	lammps_forces = lmp.extract_atom('f',3)
 	
@@ -701,5 +695,5 @@ def stochastic(use_gradient=True):
 	return best_min
 
 
-stochastic(True)
+stochastic(False)
 

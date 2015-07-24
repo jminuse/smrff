@@ -96,25 +96,25 @@ def calculate_error(system):
 		#testing
 		for a in m.atoms:
 			for b in m.atoms:
-				if not a is b:
+				if a.element!=b.element:
 					r = utils.dist(a,b)
-					coul = 332*a.type.charge*b.type.charge/r
 					eps = (a.type.vdw_e * b.type.vdw_e)**0.5
 					sigma = (a.type.vdw_r * b.type.vdw_r)**0.5
 					lj = 4*eps*( (sigma/r)**12 - (sigma/r)**6 )
-					R = 3.1
+					coul = 332*a.type.charge*b.type.charge/r
+					R = 3.0
 					D = 0.5
-					if r < R-D:
-						cut = 0.0
-					elif r < R+D:
-						cut = 1 - 0.5*( 1.0 - math.sin(0.5*math.pi*(r-R)/D) )
-					else:
-						cut = 1.0
-					m.lammps_energy += cut*(coul + lj)/2 + cut*30
+					lj_at_cutoff = 4*eps*( (sigma/(R+D))**12 - (sigma/(R+D))**6 )
+					coul_at_cutoff = 332*a.type.charge*b.type.charge/(R+D)
+					
+					#if r>R+D:
+					#	print r, len(m.atoms)			
+					
+					m.lammps_energy += (lj+coul if r>R+D else lj_at_cutoff+coul_at_cutoff)/2
 		#end testing
 		
 		atom_count += len(m.atoms)
-	
+
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	
@@ -128,15 +128,17 @@ def calculate_error(system):
 			relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
 			absolute_energy_error += (m.lammps_energy-m.energy)**2
 			
-			print m.energy, m.lammps_energy
+			#print m.energy, m.lammps_energy
 			xx += [m.energy]
 			yy += [m.lammps_energy]
-			
-	import matplotlib.pyplot as plt
-	plt.plot(xx)
-	plt.plot(yy)
-	plt.show()
-	exit()
+	
+	if 0: #plot data and exit
+		import matplotlib.pyplot as plt
+		plt.plot(xx)
+		plt.plot(yy)
+		plt.show()
+		exit()
+	
 	#calculate force error
 	relative_force_error, absolute_force_error = 0.0, 0.0
 	for i,a in enumerate(system.atoms):
@@ -151,7 +153,7 @@ def calculate_error(system):
 	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
-	error = relative_energy_error + relative_force_error
+	error = relative_energy_error# + relative_force_error
 	
 	#print absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
 	
@@ -160,9 +162,9 @@ def calculate_error(system):
 def pack_params(system):
 	params, bounds, names = [], [], []
 	for t in system.atom_types:
-		if False:
+		if True:
 			params += [t.vdw_e, t.vdw_r]
-			bounds += [(0.01,0.1), (2.5,4.0)]
+			bounds += [(0.1,40.0), (2.0,4.0)]
 			names += ['%d:vdw_e'%t.element, '%d:vdw_r'%t.element]
 			if t.element==53:
 				pass #defined by Pb
@@ -170,6 +172,7 @@ def pack_params(system):
 				params += [t.charge]
 				bounds += [(0.0,2)]
 				names += ['%d:charge'%t.element]
+	'''
 	for t in system.bond_types:
 		params += [t.e, t.r]
 		bounds += [(0,100), (0.9,3.0)]
@@ -191,7 +194,7 @@ def pack_params(system):
 			names += [s+'R']
 			params += [t.R]
 			bounds += [(5.5,10.0)]
-
+	'''
 	if len(params)!=len(bounds) or len(params)!=len(names):
 		print 'There are %d parameters, but %d bounds and %d names!' % (len(params), len(bounds), len(names))
 		exit()
@@ -201,7 +204,7 @@ def pack_params(system):
 def unpack_params(params, system):
 	i = 0
 	for t in system.atom_types:
-		if False:
+		if True:
 			t.vdw_e, t.vdw_r = params[i], params[i+1]
 			i += 2
 			if t.element==53:
@@ -209,6 +212,7 @@ def unpack_params(params, system):
 			else:
 				t.charge = params[i]
 				i += 1
+	'''
 	for t in system.bond_types:
 		t.e, t.r = params[i], params[i+1]
 		i += 2
@@ -228,7 +232,7 @@ def unpack_params(params, system):
 			num_params = 1
 			t.R = params[i]
 		i+=num_params
-	
+	'''
 
 	pb_type = [t for t in system.atom_types if t.element==82][0]
 	i_type = [t for t in system.atom_types if t.element==53][0]
@@ -244,8 +248,8 @@ Pb = 907
 I = 838
 
 extra = {
-	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=30.0, vdw_r=3.0),
-	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.0, vdw_e=30.0, vdw_r=3.0),
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=25.0, vdw_r=3.0),
+	I: utils.Struct(index=I, index2=I_, element_name='I', element=53, mass=126.9, charge=-0.0, vdw_e=25.0, vdw_r=3.0),
 }
 
 system = utils.System(box_size=[1e3, 1e3, 1e3], name='test_tersoff')
@@ -260,6 +264,7 @@ for root, dirs, file_list in os.walk("gaussian"):
 			if not name.startswith('PbI') : continue #for PbI testing
 			if not name.endswith('_def2SVP'): continue
 			energy, atoms = g09.parse_atoms(name, check_convergence=False)
+			if len(atoms)>3: continue
 			#if any([utils.dist(atoms[0], a)>3.5 for a in atoms]) and len(atoms)<6: continue
 			total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 			total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -334,7 +339,7 @@ def stochastic(use_gradient=True):
 		while True: #keep going until new params are generated
 			params = []
 			for p,b in zip(start, bounds):
-				new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
+				new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) )
 				#reflect
 				if new < b[0]:
 					new += (b[0]-new)
@@ -425,5 +430,5 @@ def try_params():
 
 #try_params()
 
-stochastic()
+stochastic(False)
 

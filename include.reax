@@ -43,23 +43,23 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
            alpha    gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
            r_pi_pi  p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
            p_ovun2  p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2  
- Pb        0        0         0            1            1        1        1        0  
-           1        1         0            1            0        1        1        0  
-           1        0         0            1            1        1        0        0  
-           1        0         0            0            0        0        0        0  
- I         0        0         0            1            1        1        1        0  
-           1        1         0            1            0        1        1        0  
-           1        1         0            1            1        1        0        0  
+ Pb        0        0         0            2.9,3.5      1        1        0.01,4   0  
+           1        5,100     0            0,1          0        1        1        0  
+           0,3      1         0            1           -1,1     -1,1      0        0  
+           1        1         0            0            0        0        0        0  
+ I         0        0         0            2,3          1        1        0.01,4   0  
+           1        5,100     0            0,1          0        1        1        0  
+           0,3      1         0            1           -1,1     -1,1      0        0  
            1        1         0            0            0        0        0        0  
   1  ! A1  A2 De_s   De_p     De_pp    p_be1       p_bo5    v13cor   p_bo6    p_ovun1       
-             p_be2  p_bo3    p_bo4    *****       p_bo1    p_bo2    ovc      *****  
-  1  2        1        1        1        1        1        1        1        1  
-              1        1        1        0        1        1        1        0  
+             p_be2  p_bo3    p_bo4     *****       p_bo1    p_bo2    ovc      *****  
+  1  2       1,10     -1,1     -1,1    -1,1        -1,1     -1,1     1        1  
+              1        1        1        0        1        1       -1,1      0  
   1    ! A1  A2      D        r_vdw    alpha    r_s       r_p     r_pp   *lgcij*  
-  1  2               1        1        1        1        1        1  
+  1  2               1,20     2.5,4      1      0,2       0,2     0,2  
   3    ! A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4  
-  1  2  1            -1.0,1.0       1        1        -1.0,1.0        1     -1.0,1.0      1  
-  1  1  2            85.0,100.0     1        1        -1.0,1.0        1     -1.0,1.0      1  
-  2  1  2            -1.0,1.0       1        1        -1.0,1.0        1     -1.0,1.0      1  
+  1  2  1            -1,1       1        1        -1,1        1     -1,1      1  
+  1  1  2            85,100     1        1        -1,1        1     -1,1      1  
+  2  1  2            -1,1       1        1        -1,1        1     -1,1      1  
   0    ! Nr of torsions;at1;at2;at3;at4;;V1;V2;V3;V2(BO);vconj;n.u;n            
   0    ! Nr of hydrogen bonds;at1;at2;at3;Rhb;Dehb;vhb1    
