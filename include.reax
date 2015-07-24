@@ -1,5 +1,5 @@
 Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters from Rahaman et al, 2010
- 0       ! Number of general parameters  
+ 39       ! Number of general parameters  
          0 !Overcoordination parameter  
          0 !Overcoordination parameter  
          0 !Valency angle conjugation parameter  

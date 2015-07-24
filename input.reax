@@ -57,9 +57,7 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
                       9.0329  -0.0087   1.8236   1.0000  -0.0113   3.0938   0.3301   0.0000  
   1    ! A1  A2      D   r_vdw  alpha   r_s   r_p   r_pp   *lgcij*  
   1  2            6.4771   4.0000   1.4809   0.7943   0.0699   0.0591  
-  3    ! A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4  
-  1  2  1            0          0        0        0        0        0        0    
-  1  1  2            0          0        0        0        0        0        0  
+  1    ! A1  A2  A3  theta_00   p_val1   p_val2   p_coa1   p_val7   p_pen1   p_val4  
   2  1  2            0.0926   6.9952   0.0344   0.0458   0.0364  -0.0000   2.9394  
   0    ! Nr of torsions;at1;at2;at3;at4;;V1;V2;V3;V2(BO);vconj;n.u;n            
   0    ! Nr of hydrogen bonds;at1;at2;at3;Rhb;Dehb;vhb1                                                         
