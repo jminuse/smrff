@@ -320,45 +320,45 @@ def write_reax_file(system, best=False):
 		f.write(' '*2 + rp.thbps[i][0] + ' '*2 +  rp.thbps[i][1] + ' '*2 +  rp.thbps[i][2] + ' '*10 + spaced_numbered_list(rp.thbps[i][3:]) + '  \n')
 
 	# Print Torsional terms:
-	if rp.number_torsional:
-		f.write(trim_spaces(rp.number_torsional,3,1) + '    ! ' + rp.torsional_c + '  \n')
-		for i in range(rp.number_torsional):
-			f.write(' '*2 + rp.torsional[i][0] + ' '*2 +  rp.torsional[i][1] + ' '*2 +  rp.torsional[i][2] +' '*2 +  rp.torsional[i][3] + ' ' + spaced_numbered_list(rp.torsional[i][4:]) + '  \n')
+	# if rp.number_torsional:
+	f.write(trim_spaces(rp.number_torsional,3,1) + '    ! ' + rp.torsional_c + '  \n')
+	for i in range(rp.number_torsional):
+		f.write(' '*2 + rp.torsional[i][0] + ' '*2 +  rp.torsional[i][1] + ' '*2 +  rp.torsional[i][2] +' '*2 +  rp.torsional[i][3] + ' ' + spaced_numbered_list(rp.torsional[i][4:]) + '  \n')
 
 	# Print Hydrogen Bonds:
-	if rp.number_hydrogen:
-		f.write(trim_spaces(rp.number_hydrogen,3,1) + '    ! ' + rp.hydrogen_c + '  \n')
-		for i in range(rp.number_hydrogen):
-			f.write(' '*2 + rp.hydrogen[i][0] + ' '*2 +  rp.hydrogen[i][1] + ' '*2 +  rp.hydrogen[i][2] + ' ' + spaced_numbered_list(rp.hydrogen[i][3:]) + '  \n')
+	# if rp.number_hydrogen:
+	f.write(trim_spaces(rp.number_hydrogen,3,1) + '    ! ' + rp.hydrogen_c + '  \n')
+	for i in range(rp.number_hydrogen):
+		f.write(' '*2 + rp.hydrogen[i][0] + ' '*2 +  rp.hydrogen[i][1] + ' '*2 +  rp.hydrogen[i][2] + ' ' + spaced_numbered_list(rp.hydrogen[i][3:]) + '  \n')
 
 	f.close()
 
 
 def set_lammps_parameters(system):
 	write_reax_file(system)
-	lmp.command('unfix 1')
-	lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
-	lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
+	system.lmp.command('unfix 1')
+	system.lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
+	system.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 	
 	for t in system.atom_types:
 		pass
 		#if hasattr(t,'vdw_e'):
-		#	lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
-		#	lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
+		#	system.lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
+		#	system.lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
 	for t in system.bond_types:
-		lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
+		system.lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
 	for t in system.angle_types:
-		lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
+		system.lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
 	for t in system.dihedral_types:
-		lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
+		system.lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
 
 def calculate_error(system):
 	
 	#run LAMMPS
 	set_lammps_parameters(system)
-	lmp.command('run 1')
-	lammps_energies = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
-	lammps_forces = lmp.extract_atom('f',3)
+	system.lmp.command('run 1')
+	lammps_energies = system.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
+	lammps_forces = system.lmp.extract_atom('f',3)
 	
 	#assign energies to their proper groups of atoms
 	atom_count = 0
@@ -485,7 +485,7 @@ def unpack_params(params, system):
 				thbp[i] = params[p]
 				p += 1
 
-def run(system_name, parallel_system_names=[]):
+def run(system_name, other_system_names=[]):
 	Cl_ = 66
 	H_ = 54
 	N_ = 53
@@ -561,9 +561,9 @@ def run(system_name, parallel_system_names=[]):
 	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
 	fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 	''').splitlines()
-	lmp = lammps('',['-log',system.name+'.log','-screen','none'])
+	system.lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 	for line in commands:
-		lmp.command(line)
+		system.lmp.command(line)
 
 	system.reax_params = read_reax_file('../input.reax')
 	system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
@@ -583,16 +583,17 @@ def run(system_name, parallel_system_names=[]):
 		print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
 	#get params from other systems
-	others = [utils.System(name=n) for n in other_system_names]
-	def check_other_systems(others):
-		for other in others:
+	system.others = [utils.System(name=n) for n in other_system_names]
+	def check_others(system):
+		for other in system.others:
 			if os.path.exists('../'+other.name+'_best.reax'):
 				other.reax_params = [utils.Struct(reax_params=read_reax_file('../'+other.name+'_best.reax')[0]) ]
 			else:
 				other.reax_params = None
 			other.reax_includes = system.reax_includes
 			other.list, _ = pack_params(other)
-	how_long_since_checked_other_systems = 0
+		system.how_long_since_checked_others = 0
+	check_others(system)
 	
 	#optimize
 	import numpy
@@ -604,10 +605,9 @@ def run(system_name, parallel_system_names=[]):
 		#exit()
 	
 		def new_param_guess(start):
-			how_long_since_checked_other_systems += 1
-			if how_long_since_checked_other_systems > 1000:
-				check_other_systems(others)
-				how_long_since_checked_other_systems = 0
+			system.how_long_since_checked_others += 1
+			if system.how_long_since_checked_others > 1000:
+				check_others(system)
 			
 			while True: #keep going until new params are generated
 				params = []
