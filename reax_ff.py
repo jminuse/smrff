@@ -274,7 +274,7 @@ def trim_spaces(num,space_count=8,i=False):
 def spaced_numbered_list(numlist):
 	return ' '.join(map(trim_spaces, numlist))
 
-def write_reax_file(system, best=False):
+def write_reax_file(system, best=False,error=None):
 	if best:
 		f = open(system.name+'_best.reax', 'w')
 	else:
@@ -284,8 +284,9 @@ def write_reax_file(system, best=False):
 	delim = ' !'
 	s = "     "
 	rp=system.reax_params
-
-	f.write(rp.first_line_comment)
+	if error:
+		error_string='Error: ' + str(error) + '  '
+	f.write(error_string+rp.first_line_comment)
 	
 	# Print General Parameters:
 	f.write(' ' + str(rp.number_of_gen_params) + '       ! ' + 'Number of general parameters  \n')
@@ -739,7 +740,7 @@ def run(system_name, other_system_names=[]):
 			if guess.fun < best_min.fun:
 				best_min = guess
 				unpack_params(best_min.x, system)
-				write_reax_file(system,best=True)
+				write_reax_file(system,best=True,error = best_min.fun)
 				print system.name, 'new best error = %.4g' % best_min.fun
 
 				# For refreshing the bounds:
@@ -754,11 +755,11 @@ def run(system_name, other_system_names=[]):
 	stochastic(True)
 
 from multiprocessing import Process, Queue
-
-N = 8
+jobname=''
+N = 4
 queue = Queue()
 for i in range(N):
-	p = Process(target=run, args=(str(i), [str(other) for other in range(N) if other!=i]))
+	p = Process(target=run, args=(str(i)+jobname, [str(other)+jobname for other in range(N) if other!=i]))
 	p.start()
 
 
