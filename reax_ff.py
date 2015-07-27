@@ -511,25 +511,28 @@ def run(system_name, other_system_names=[]):
 
 	system = utils.System(box_size=[100, 100, 100], name=system_name)
 
-	for root, dirs, file_list in os.walk("gaussian"):
-		count = 0
-		for ff in file_list:
-			if ff.endswith('.log'):
-				name = ff[:-4]
-				if not name.startswith('PbCl2'): continue
-				if not name.endswith('_def2SVP'): continue
-				energy, atoms = g09.parse_atoms(name, check_convergence=False)
-				if len(atoms)!=3: continue
-				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
-				total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
-				total.element_string = ' '.join( [a.element for a in total.atoms] )
-				print 'Read', total.element_string, 'from', name
-				for i,a in enumerate(total.atoms):
-					b = atoms[i]
-					a.x, a.y, a.z = b.x, b.y, b.z
-					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
-				system.add(total, count*100.0)
-				count += 1
+	# for root, dirs, file_list in os.walk("/fs/home/jms875/Documents/perovskites/smrff/gaussian"):
+	fil = ['PbCl2_0_def2SVP','PbCl2_10_def2SVP','PbCl2_11_def2SVP','PbCl2_12_def2SVP','PbCl2_13_def2SVP','PbCl2_14_def2SVP','PbCl2_15_def2SVP','PbCl2_16_def2SVP','PbCl2_17_def2SVP','PbCl2_18_def2SVP','PbCl2_19_def2SVP','PbCl2_1_def2SVP','PbCl2_20_def2SVP','PbCl2_21_def2SVP','PbCl2_22_def2SVP','PbCl2_23_def2SVP','PbCl2_24_def2SVP','PbCl2_2_def2SVP','PbCl2_3_def2SVP','PbCl2_4_def2SVP','PbCl2_5_def2SVP','PbCl2_6_def2SVP','PbCl2_7_def2SVP','PbCl2_8_def2SVP','PbCl2_9_def2SVP','PbCl2_def2SVP','PbCl2_opt_def2SVP','PbCl2_p0_def2SVP','PbCl2_p10_def2SVP','PbCl2_p11_def2SVP','PbCl2_p12_def2SVP','PbCl2_p13_def2SVP','PbCl2_p14_def2SVP','PbCl2_p15_def2SVP','PbCl2_p16_def2SVP','PbCl2_p17_def2SVP','PbCl2_p18_def2SVP','PbCl2_p19_def2SVP','PbCl2_p1_def2SVP','PbCl2_p2_def2SVP','PbCl2_p3_def2SVP','PbCl2_p4_def2SVP','PbCl2_p5_def2SVP','PbCl2_p6_def2SVP','PbCl2_p7_def2SVP','PbCl2_p8_def2SVP','PbCl2_p9_def2SVP','PbCl2_r0_def2SVP','PbCl2_r10_def2SVP','PbCl2_r11_def2SVP','PbCl2_r12_def2SVP','PbCl2_r13_def2SVP','PbCl2_r14_def2SVP','PbCl2_r15_def2SVP','PbCl2_r16_def2SVP','PbCl2_r17_def2SVP','PbCl2_r18_def2SVP','PbCl2_r19_def2SVP','PbCl2_r1_def2SVP','PbCl2_r2_def2SVP','PbCl2_r3_def2SVP','PbCl2_r4_def2SVP','PbCl2_r5_def2SVP','PbCl2_r6_def2SVP','PbCl2_r7_def2SVP','PbCl2_r8_def2SVP','PbCl2_r9_def2SVP']
+	random.seed(1337)
+	random.shuffle(fil)
+	count = 0
+	for ff in fil:
+		# if ff.endswith('.log'):
+		name = ff
+		if not name.startswith('PbCl2'): continue
+		if not name.endswith('_def2SVP'): continue
+		energy, atoms = g09.parse_atoms(name, check_convergence=True)
+		if len(atoms)!=3: continue
+		total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
+		total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
+		total.element_string = ' '.join( [a.element for a in total.atoms] )
+		print 'Read', total.element_string, 'from', name
+		for i,a in enumerate(total.atoms):
+			b = atoms[i]
+			a.x, a.y, a.z = b.x, b.y, b.z
+			a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
+		system.add(total, count*100.0)
+		count += 1
 	#make system big enough to hold all atoms
 	system.box_size[0] = max(system.atoms, key=lambda a:a.x).x-min(system.atoms, key=lambda a:a.x).x
 	system.box_size[1] = max(system.atoms, key=lambda a:a.y).y-min(system.atoms, key=lambda a:a.y).y
@@ -625,7 +628,7 @@ def run(system_name, other_system_names=[]):
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print system.name, 'starting error: %.4g' % best_min.fun
-		#exit()
+		exit()
 		def new_param_guess(start, gauss=True):
 			system.how_long_since_checked_others += 1
 			if system.how_long_since_checked_others > 10:
