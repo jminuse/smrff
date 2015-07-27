@@ -720,7 +720,7 @@ def run(system_name, other_system_names=[]):
 
 		return best_min
 
-	stochastic(False)
+	stochastic(True)
 
 from multiprocessing import Process, Queue
 
