@@ -672,8 +672,8 @@ def run(system_name, other_system_names=[]):
 				if newx>bounds[i][1] or newx<bounds[i][0]:
 					newx = oldx - 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
 				if newx>bounds[i][1] or newx<bounds[i][0]:
-					print oldx, newx, bounds[i][0], bounds[i][1]
-					exit()
+					print 'Bounds exceeded:', oldx, newx, bounds[i][0], bounds[i][1]
+					#exit()
 				dif = newx - oldx
 				if dif != 0.0:
 					x[i] = newx
@@ -729,7 +729,7 @@ def run(system_name, other_system_names=[]):
 				#while start_error > 2.0:
 				#	params = new_param_guess(best_min.x, gauss=True)
 				#	start_error = calculate_error_from_list(params)
-				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, bounds=bounds, factr=1e8)
+				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8) #, bounds=bounds
 				guess = utils.Struct(fun=fun,x=x)
 				print system.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
@@ -755,10 +755,11 @@ def run(system_name, other_system_names=[]):
 
 from multiprocessing import Process, Queue
 
+run('test')
+'''
 N = 8
 queue = Queue()
 for i in range(N):
 	p = Process(target=run, args=(str(i), [str(other) for other in range(N) if other!=i]))
 	p.start()
-
-
+'''

@@ -43,7 +43,7 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
 		        alpha     gamma_w   valency_boc  p_ovun5      *****    chi      eta     p_hbond    
 		        r_pi_pi   p_lp2     *****        b_o_131      b_o_132  b_o_133  *****   *****    
 		        p_ovun2   p_val3    *****        valency_val  p_val5   rcore2   ecore2  acore2  
- Pb   1.9202   2.0000 207.2000   2.9000   0.2841   1.1113   0.1641   1.0000  
+ Pb   1.9202   2.0000 207.2000   2.9000   0.2841   1.1113   0.1641   4.0000  
                15.7802   5.0000   1.0000   0.0014   0.0000   1.8673   1.0220   0.0000  
                 0.0000   0.0001   0.0000   0.0286   0.2405   0.2528   0.0000   0.0000  
                -3.6911   7.2355   0.0000   4.0000   2.5791   0.0000   0.0000   0.0000  
