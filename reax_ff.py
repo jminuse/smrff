@@ -286,6 +286,8 @@ def write_reax_file(system, best=False,error=None):
 	rp=system.reax_params
 	if error:
 		error_string='Error: ' + str(error) + '  '
+	else:
+		error_string=''
 	f.write(error_string+rp.first_line_comment)
 	
 	# Print General Parameters:
