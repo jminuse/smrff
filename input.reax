@@ -35,7 +35,7 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
    50.0000 !Overcoordination parameter  
     1.8512 !Valency/lone pair parameter  
     0.5000 !Not used  
-   20.0000 !Not used  
+   20.0000 !Not used 
     5.0000 !Molecular energy (not used)  
     0.0000 !Molecular energy (not used)  
     2.6962 !Valency angle conjugation parameter  

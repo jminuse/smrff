@@ -286,7 +286,9 @@ def write_reax_file(system, best=False,error=None):
 	rp=system.reax_params
 	if error:
 		error_string='Error: ' + str(error) + '  '
-		f.write(error_string+rp.first_line_comment)
+	else:
+		error_string=''
+	f.write(error_string+rp.first_line_comment)
 	
 	# Print General Parameters:
 	f.write(' ' + str(rp.number_of_gen_params) + '       ! ' + 'Number of general parameters  \n')
@@ -570,7 +572,7 @@ def run(system_name, other_system_names=[]):
 	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
 	fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 	''').splitlines()
-	if False:
+	if True:
 		system.lmp = lammps('',['-log',system.name+'.log','-screen','none'])
 	else:
 		system.lmp = lammps('',['-log',system.name+'.log'])
