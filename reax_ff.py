@@ -684,56 +684,19 @@ def run(system_name, other_system_names=[]):
 					print newx, oldx, (bounds[i][0], bounds[i][1])
 					exit()
 			return numpy.array(gradient)
-	
-	# For refreshing the bounds:
-	# def extend_parameter_history(param_h,curr_params):
-	# 	for i in range(len(curr_params)):
-	# 		param_h[i].append(curr_params[i])
-	# 	return param_h
-
-	# def rebound(param_hist):
-	# 	newbounds=[]
-	# 	trimmed_param_hist=[]
-	# 	for i,p in enumerate(param_hist):
-	# 		trimmed_param_hist.append([p[-1]])
-	# 		avg=numpy.mean(p)
-	# 		sigma=numpy.std(p)
-	# 		if min(p)<=bounds[i][0] and max(p)>=bounds[i][1]:
-	# 			newbounds.append((bounds[i][0]-sigma,bounds[i][1]+sigma))
-	# 		else:
-	# 			newbounds.append((avg-2*sigma,avg+2*sigma))
-	# 	for i in range(len(names)):
-	# 		if names[i].endswith('gamma_w'):
-	# 			print names[i] + 'old bounds:' + str(bounds[i]) + ' new:' + str(newbounds[i])
-	# 			if newbounds[i][0]<=.5:
-	# 				newbounds[i]=(.501,newbounds[i][1])
-	# 			print names[i] + 'old bounds:' + str(bounds[i]) + ' new:' + str(newbounds[i])
-	# 	newlogname=log.name[0:-2] +  ('%.2f' % ((float(log.name[-2:]) +1)/100))[-2:]
-	# 	log.close()
-	# 	newlog=open('../logs/'+newlogname,'w+')
-	# 	newlog.write('#'+str(names)+'Error'+'\n')
-	# 	newlog.write('#'+str(bounds)+'\n')
-	# 	return trimmed_param_hist,newbounds,newlog
-
-	# param_hist=[[] for x in range(len(initial_params))]
-	# param_hist=extend_parameter_history(param_hist,initial_params)
-
-	# log = open('../logs/'+system.name+'.paramlog'+'00','w+')
-	# log.write('#'+str(names)+'Error'+'\n')
-	# log.write('#'+str(bounds)+'\n')
 
 		while True:
 			if use_gradient:
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				start_error = calculate_error_from_list(params)
 				#while start_error > 2.0:
 				#	params = new_param_guess(best_min.x, gauss=True)
 				#	start_error = calculate_error_from_list(params)
-				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8) #, bounds=bounds
+				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8, bounds=bounds)
 				guess = utils.Struct(fun=fun,x=x)
 				print system.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 				#print system.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
@@ -751,7 +714,7 @@ def run(system_name, other_system_names=[]):
 
 		return best_min
 
-	stochastic(True)
+	stochastic(False)
 
 from multiprocessing import Process, Queue
 
