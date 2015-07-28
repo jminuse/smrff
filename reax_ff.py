@@ -342,12 +342,8 @@ def calculate_error(dataset):
 	
 	#run LAMMPS
 	for s in dataset.systems:
-		if True: #hide screen
-			lmp = lammps('',['-log','none','-screen','none'])
-		else: #show screen
-			lmp = lammps('',['-log','none'])
-
-		commands = ('''units real
+		commands = ('''clear
+units real
 atom_style full
 pair_style reax/c NULL
 bond_style harmonic
@@ -355,24 +351,26 @@ angle_style harmonic
 dihedral_style opls
 
 boundary f f f
-read_data	'''+s.name+'''.data
+read_data	'''+dataset.systems[0].name+'''.data
 
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
 thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
-fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
-run 1''').splitlines()
+fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		for line in commands:
-			lmp.command(line)
+			dataset.lmp.command(line)
+	
+		for i,a in enumerate(s.atoms):
+			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+		dataset.lmp.command('run 1')
 		
-		lammps_energies_by_atom = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
+		lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 		s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
-		lammps_forces = lmp.extract_atom('f',3)
+		lammps_forces = dataset.lmp.extract_atom('f',3)
 		for i,a in enumerate(s.atoms):
 			a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
-		lmp.close()
 	
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
@@ -534,9 +532,32 @@ def run(run_name, other_run_names=[]):
 		for s in systems:
 			s.energy -= baseline_energy #baseline energy = 0.0
 
+	if True: #hide screen
+		dataset.lmp = lammps('',['-log',dataset.name+'.log','-screen','none'])
+	else: #show screen
+		dataset.lmp = lammps('',['-log',dataset.name+'.log'])
+	
 	os.chdir('lammps')
-	for s in dataset.systems:
-		files.write_lammps_data(s)
+	files.write_lammps_data(dataset.systems[0])
+	
+	commands = ('''units real
+atom_style full
+pair_style reax/c NULL
+bond_style harmonic
+angle_style harmonic
+dihedral_style opls
+
+boundary f f f
+read_data	'''+dataset.systems[0].name+'''.data
+
+compute atom_pe all pe/atom
+compute		test_pe all reduce sum c_atom_pe
+thermo_style custom pe c_test_pe
+pair_coeff * * ../input.reax Pb Cl
+fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
+
+	for line in commands:
+		dataset.lmp.command(line)
 
 	dataset.reax_params = read_reax_file('../input.reax')
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
@@ -671,7 +692,8 @@ def run(run_name, other_run_names=[]):
 					exit()
 			return numpy.array(gradient)
 
-		while True:
+		#while True:
+		for step in range(100):
 			if use_gradient:
 				params = new_param_guess(best_min.x, gauss=True)
 				start_error = calculate_error_from_list(params)
@@ -682,7 +704,7 @@ def run(run_name, other_run_names=[]):
 				guess = utils.Struct(fun=fun,x=x)
 				print dataset.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
-				params = new_param_guess(best_min.x, gauss=True)
+				params = new_param_guess(best_min.x, gauss=False)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 				print dataset.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
