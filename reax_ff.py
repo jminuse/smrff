@@ -369,7 +369,9 @@ run 1''').splitlines()
 		
 		lammps_energies_by_atom = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 		system.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(system.atoms)) ] )
-		system.lammps_forces = lmp.extract_atom('f',3)
+		lammps_forces = lmp.extract_atom('f',3)
+		for i,a in enumerate(system.atoms):
+			a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 		lmp.close()
 	
 	#calculate energy error
@@ -386,7 +388,7 @@ run 1''').splitlines()
 			#print m.energy, m.lammps_energy
 
 			for i,a in enumerate(system.atoms):
-				fx, fy, fz = system.lammps_forces[i][0], system.lammps_forces[i][1], system.lammps_forces[i][2]
+				fx, fy, fz = a.lfx, a.lfy, a.lfz
 				real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
 				try:
 					relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
@@ -574,7 +576,7 @@ def run(run_name, other_run_names=[]):
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print dataset.name, 'starting error: %.4g' % best_min.fun
-		exit() #just print starting error
+		#exit() #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
 			if dataset.how_long_since_checked_others > 10:
