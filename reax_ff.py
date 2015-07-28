@@ -342,7 +342,7 @@ def calculate_error(dataset):
 	
 	#run LAMMPS
 	for system in dataset.systems:
-		if False: #hide screen
+		if True: #hide screen
 			lmp = lammps('',['-log',dataset.name+'.log','-screen','none'])
 		else: #show screen
 			lmp = lammps('',['-log',dataset.name+'.log'])
@@ -363,11 +363,12 @@ thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
 run 1''').splitlines()
-	
+
 		for line in commands:
 			lmp.command(line)
 		
-		system.lammps_energy = sum( lmp.extract_compute('atom_pe',1,1) ) #http://lammps.sandia.gov/doc/Section_python.html
+		lammps_energies_by_atom = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
+		system.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(system.atoms)) ] )
 		system.lammps_forces = lmp.extract_atom('f',3)
 		lmp.close()
 	
