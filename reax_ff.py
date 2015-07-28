@@ -659,7 +659,7 @@ def run(run_name, other_run_names=[]):
 				guess = utils.Struct(fun=fun,x=x)
 				print dataset.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
-				params = new_param_guess(best_min.x, gauss=True)
+				params = new_param_guess(best_min.x, gauss=False)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 				#print dataset.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
