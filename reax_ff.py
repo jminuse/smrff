@@ -341,7 +341,7 @@ def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
 	#run LAMMPS
-	for system in dataset.systems:
+	for s in dataset.systems:
 		if True: #hide screen
 			lmp = lammps('',['-log',dataset.name+'.log','-screen','none'])
 		else: #show screen
@@ -355,7 +355,7 @@ angle_style harmonic
 dihedral_style opls
 
 boundary f f f
-read_data	'''+system.name+'''.data
+read_data	'''+s.name+'''.data
 
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
@@ -368,9 +368,9 @@ run 1''').splitlines()
 			lmp.command(line)
 		
 		lammps_energies_by_atom = lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
-		system.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(system.atoms)) ] )
+		s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
 		lammps_forces = lmp.extract_atom('f',3)
-		for i,a in enumerate(system.atoms):
+		for i,a in enumerate(s.atoms):
 			a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 		lmp.close()
 	
@@ -409,11 +409,11 @@ run 1''').splitlines()
 	else:
 		return error
 
-def pack_params(system):
+def pack_params(dataset):
 	params, names = [], []
 	
-	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
-		names_list = system.reax_params.atom_types_names
+	for atom,include in zip(dataset.reax_params.atom_types, dataset.reax_includes.atom_types):
+		names_list = dataset.reax_params.atom_types_names
 		atom_name = atom[0][0]
 		for line in range(4):
 			for i,b in enumerate(include[line]):
@@ -421,8 +421,8 @@ def pack_params(system):
 					params.append(atom[line][i])
 					names.append(atom_name + '.' + names_list[line][i])
 
-	for bond,include in zip(system.reax_params.bonds, system.reax_includes.bonds):
-		names_list = system.reax_params.bond_types_names
+	for bond,include in zip(dataset.reax_params.bonds, dataset.reax_includes.bonds):
+		names_list = dataset.reax_params.bond_types_names
 		bondname='tbp(' + bond[0][0] + ',' + bond[0][1] + ').'
 		for line in range(2):
 			for i,b in enumerate(include[line]):
@@ -430,16 +430,16 @@ def pack_params(system):
 					params.append(bond[line][i])
 					names.append(bondname+names_list[line][i])
 	
-	for offdiag,include in zip(system.reax_params.offdiags, system.reax_includes.offdiags):
-		names_list=system.reax_params.offdiags_names
+	for offdiag,include in zip(dataset.reax_params.offdiags, dataset.reax_includes.offdiags):
+		names_list=dataset.reax_params.offdiags_names
 		offdname='offd('+offdiag[0]+','+offdiag[1]+').'
 		for i,b in enumerate(include):
 			if b and type(b)!=str:
 				params.append(offdiag[i])
 				names.append(offdname+names_list[i])
 
-	for thbp,include in zip(system.reax_params.thbps,system.reax_includes.thbps):
-		names_list = system.reax_params.three_body_names
+	for thbp,include in zip(dataset.reax_params.thbps,dataset.reax_includes.thbps):
+		names_list = dataset.reax_params.three_body_names
 		thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+').'
 		for i,b in enumerate(include):
 			if b and type(b)!=str:
@@ -452,30 +452,30 @@ def pack_params(system):
 	
 	return params, names
 
-def unpack_params(params, system):
+def unpack_params(params, dataset):
 	p = 0
 	
-	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
+	for atom,include in zip(dataset.reax_params.atom_types, dataset.reax_includes.atom_types):
 		for line in range(4):
 			for i,b in enumerate(include[line]):
 				if b and type(b)!=str:
 					atom[line][i] = params[p]
 					p += 1
 
-	for bond,include in zip(system.reax_params.bonds, system.reax_includes.bonds):
+	for bond,include in zip(dataset.reax_params.bonds, dataset.reax_includes.bonds):
 		for line in range(2):
 			for i,b in enumerate(include[line]):
 				if b and type(b)!=str:
 					bond[line][i] = params[p]
 					p += 1
 
-	for offdiag,include in zip(system.reax_params.offdiags, system.reax_includes.offdiags):
+	for offdiag,include in zip(dataset.reax_params.offdiags, dataset.reax_includes.offdiags):
 		for i,b in enumerate(include):
 			if b and type(b)!=str:
 				offdiag[i] = params[p]
 				p += 1
 
-	for thbp,include in zip(system.reax_params.thbps,system.reax_includes.thbps):
+	for thbp,include in zip(dataset.reax_params.thbps,dataset.reax_includes.thbps):
 		for i,b in enumerate(include):
 			if b and type(b)!=str:
 				thbp[i] = params[p]
@@ -502,7 +502,7 @@ def run(run_name, other_run_names=[]):
 			if ff.endswith('.log'):
 				name = ff[:-4]
 				filenames.append(name)
-	filenames = filenames[:5]
+	#filenames = filenames[:5]
 	#random.seed(10)
 	#random.shuffle(filenames)
 	for name in filenames:
@@ -535,8 +535,8 @@ def run(run_name, other_run_names=[]):
 			s.energy -= baseline_energy #baseline energy = 0.0
 
 	os.chdir('lammps')
-	for system in dataset.systems:
-		files.write_lammps_data(system)
+	for s in dataset.systems:
+		files.write_lammps_data(s)
 
 	dataset.reax_params = read_reax_file('../input.reax')
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
@@ -680,14 +680,12 @@ def run(run_name, other_run_names=[]):
 	stochastic(False)
 
 from multiprocessing import Process, Queue
+def run_multiple(jobname, N):
+	queue = Queue()
+	for i in range(N):
+		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
+		p.start()
 
-run('test')
-'''
-jobname=''
-N = 4
-queue = Queue()
-for i in range(N):
-	p = Process(target=run, args=(str(i)+jobname, [str(other)+jobname for other in range(N) if other!=i]))
-	p.start()
-'''
+#run('test')
+run_multiple('test', 8)
 
