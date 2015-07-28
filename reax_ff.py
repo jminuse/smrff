@@ -679,6 +679,6 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-#run('test')
-run_multiple('test', 8)
+run('test')
+#run_multiple('test', 8)
 
