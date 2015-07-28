@@ -339,9 +339,22 @@ def write_reax_file(system, best=False,error=None):
 
 def set_lammps_parameters(system):
 	write_reax_file(system)
-	system.lmp.command('unfix 1')
+	
+	mc = 1
+	for element_string, molecules in system.molecules_by_elements.iteritems():
+		for m in molecules:
+			system.lmp.command('unfix %d' % mc)
+			mc += 1		
+	
 	system.lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
-	system.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
+	#system.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
+	
+	mc = 1
+	for element_string, molecules in system.molecules_by_elements.iteritems():
+		for m in molecules:
+			system.lmp.command( 'group %d molecule %d' % (mc, mc) )
+			system.lmp.command( 'fix %d %d qeq/reax 1 0.0 10.0 1.0e-6 reax/c' % (mc,mc) )
+			mc += 1
 	
 	for t in system.atom_types:
 		pass
@@ -513,7 +526,8 @@ def run(system_name, other_system_names=[]):
 
 	# for root, dirs, file_list in os.walk("/fs/home/jms875/Documents/perovskites/smrff/gaussian"):
 	fil = ['PbCl2_0_def2SVP','PbCl2_10_def2SVP','PbCl2_11_def2SVP','PbCl2_12_def2SVP','PbCl2_13_def2SVP','PbCl2_14_def2SVP','PbCl2_15_def2SVP','PbCl2_16_def2SVP','PbCl2_17_def2SVP','PbCl2_18_def2SVP','PbCl2_19_def2SVP','PbCl2_1_def2SVP','PbCl2_20_def2SVP','PbCl2_21_def2SVP','PbCl2_22_def2SVP','PbCl2_23_def2SVP','PbCl2_24_def2SVP','PbCl2_2_def2SVP','PbCl2_3_def2SVP','PbCl2_4_def2SVP','PbCl2_5_def2SVP','PbCl2_6_def2SVP','PbCl2_7_def2SVP','PbCl2_8_def2SVP','PbCl2_9_def2SVP','PbCl2_def2SVP','PbCl2_opt_def2SVP','PbCl2_p0_def2SVP','PbCl2_p10_def2SVP','PbCl2_p11_def2SVP','PbCl2_p12_def2SVP','PbCl2_p13_def2SVP','PbCl2_p14_def2SVP','PbCl2_p15_def2SVP','PbCl2_p16_def2SVP','PbCl2_p17_def2SVP','PbCl2_p18_def2SVP','PbCl2_p19_def2SVP','PbCl2_p1_def2SVP','PbCl2_p2_def2SVP','PbCl2_p3_def2SVP','PbCl2_p4_def2SVP','PbCl2_p5_def2SVP','PbCl2_p6_def2SVP','PbCl2_p7_def2SVP','PbCl2_p8_def2SVP','PbCl2_p9_def2SVP','PbCl2_r0_def2SVP','PbCl2_r10_def2SVP','PbCl2_r11_def2SVP','PbCl2_r12_def2SVP','PbCl2_r13_def2SVP','PbCl2_r14_def2SVP','PbCl2_r15_def2SVP','PbCl2_r16_def2SVP','PbCl2_r17_def2SVP','PbCl2_r18_def2SVP','PbCl2_r19_def2SVP','PbCl2_r1_def2SVP','PbCl2_r2_def2SVP','PbCl2_r3_def2SVP','PbCl2_r4_def2SVP','PbCl2_r5_def2SVP','PbCl2_r6_def2SVP','PbCl2_r7_def2SVP','PbCl2_r8_def2SVP','PbCl2_r9_def2SVP']
-	random.seed(1337)
+	fil = fil[:31]
+	random.seed(400)
 	random.shuffle(fil)
 	count = 0
 	for ff in fil:
@@ -531,7 +545,7 @@ def run(system_name, other_system_names=[]):
 			b = atoms[i]
 			a.x, a.y, a.z = b.x, b.y, b.z
 			a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
-		system.add(total, count*100.0)
+		system.add(total, count*10000.0)
 		count += 1
 	#make system big enough to hold all atoms
 	system.box_size[0] = max(system.atoms, key=lambda a:a.x).x-min(system.atoms, key=lambda a:a.x).x
@@ -559,6 +573,11 @@ def run(system_name, other_system_names=[]):
 	os.chdir('lammps')
 	files.write_lammps_data(system)
 
+	if True:
+		system.lmp = lammps('',['-log',system.name+'.log','-screen','none'])
+	else:
+		system.lmp = lammps('',['-log',system.name+'.log'])
+
 	commands = ('''units real
 	atom_style full
 	pair_style reax/c NULL
@@ -572,13 +591,15 @@ def run(system_name, other_system_names=[]):
 	compute atom_pe all pe/atom
 	compute		test_pe all reduce sum c_atom_pe
 	thermo_style custom pe c_test_pe
-	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2))+'''
-	fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
-	''').splitlines()
-	if True:
-		system.lmp = lammps('',['-log',system.name+'.log','-screen','none'])
-	else:
-		system.lmp = lammps('',['-log',system.name+'.log'])
+	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2)) ).splitlines()
+	
+	mc = 1
+	for element_string, molecules in system.molecules_by_elements.iteritems():
+		for m in molecules:
+			commands.append( 'group %d molecule %d' % (mc, mc) )
+			commands.append( 'fix %d all qeq/reax 1 0.0 10.0 1.0e-6 reax/c' % mc )
+			mc += 1
+	
 	for line in commands:
 		system.lmp.command(line)
 
@@ -628,7 +649,7 @@ def run(system_name, other_system_names=[]):
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print system.name, 'starting error: %.4g' % best_min.fun
-		exit()
+		exit() #just print starting error
 		def new_param_guess(start, gauss=True):
 			system.how_long_since_checked_others += 1
 			if system.how_long_since_checked_others > 10:
@@ -723,7 +744,7 @@ def run(system_name, other_system_names=[]):
 
 		return best_min
 
-	stochastic(True)
+	stochastic(False)
 
 from multiprocessing import Process, Queue
 
