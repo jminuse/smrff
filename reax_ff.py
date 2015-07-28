@@ -600,10 +600,33 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	import numpy
 	from scipy.optimize import minimize, fmin_l_bfgs_b
 
+	def parameter_effect(initial_params=initial_params):
+		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
+		for i,p in enumerate(initial_params):
+			# print 'Testing '+ names[i]
+			testparams = initial_params[:]
+			if p!=0:
+				testparams[i] = p*.2
+			else:
+				print 'PARAMETER ' + names[i] + " WAS ZERO"
+				testparams[i] = -5
+			test1 = utils.Struct(fun=calculate_error_from_list(testparams),x=testparams)
+			if p!=0:
+				testparams[i] = p*5
+			else:
+				testparams[i] = 5
+			test2 = utils.Struct(fun=calculate_error_from_list(testparams),x=testparams)
+			if (best_min.fun == test1.fun and best_min.fun == test2.fun):
+				print 'Parameter ' + names[i] +' has no effect'
+			else:
+				print 'Parameter ' + names[i] +' has an effect' 
+		raise SystemExit # Exit once all parameters are tested
+
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print dataset.name, 'starting error: %.4g' % best_min.fun
-		#exit() #just print starting error
+		# parameter_effect(initial_params)
+		# exit() #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
 			if dataset.how_long_since_checked_others > 10:
@@ -672,7 +695,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 		#while True:
 		for step in range(100):
 			if use_gradient:
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				start_error = calculate_error_from_list(params)
 				#while start_error > 2.0:
 				#	params = new_param_guess(best_min.x, gauss=True)
@@ -683,7 +706,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			else: #non-gradient optimization
 				params = new_param_guess(best_min.x, gauss=False)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-				#print dataset.name, 'error', guess.fun, best_min.fun
+				print dataset.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
 				best_min = guess
 				unpack_params(best_min.x, dataset)
@@ -701,6 +724,6 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-run('test')
-#run_multiple('test', 8)
+#run('test')
+run_multiple('test1', 4)
 
