@@ -118,7 +118,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.atom_types[i][0].append(0)
 			else:
-			 	m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+			 	m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b = (params.atom_types[i][0][index] * default_bound_mults[0],params.atom_types[i][0][index] * default_bound_mults[1])
 				else:
@@ -136,7 +136,7 @@ def read_reax_include_file(filename,params):
 				if item == '0':
 					reax.atom_types[i][line].append(0)
 				else:
-					m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+					m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 					if not m:
 						b = (params.atom_types[i][line][index] * default_bound_mults[0],params.atom_types[i][line][index] * default_bound_mults[1])
 					else:
@@ -157,7 +157,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.bonds[i][0].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+				m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b = (params.bonds[i][0][index] * default_bound_mults[0],params.bonds[i][0][index] * default_bound_mults[1]) 
 				else:
@@ -174,7 +174,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.bonds[i][1].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+				m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.bonds[i][1][index] * default_bound_mults[0],params.bonds[i][1][index] * default_bound_mults[1]) 
 				else:
@@ -193,7 +193,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.offdiags[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+				m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.offdiags[i][index] * default_bound_mults[0],params.offdiags[i][index] * default_bound_mults[1]) 
 				else:
@@ -212,7 +212,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.thbps[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+				m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.thbps[i][index] * default_bound_mults[0],params.thbps[i][index] * default_bound_mults[1]) 
 				else:
@@ -231,7 +231,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.torsional[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+				m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.torsional[i][index] * default_bound_mults[0],params.torsional[i][index] * default_bound_mults[1]) 
 				else:
@@ -250,7 +250,7 @@ def read_reax_include_file(filename,params):
 			if item == '0':
 				reax.hydrogen[i].append(0)
 			else:
-				m=re.match('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
+				m=re.search('(\-?[0-9\.]+)\,(\-?[0-9\.]+)',item)
 				if not m:
 					b =  (params.hydrogen[i][index] * default_bound_mults[0],params.hydrogen[i][index] * default_bound_mults[1]) 
 				else:
@@ -667,13 +667,6 @@ def run(run_name, other_run_names=[]):
 				unpack_params(best_min.x, dataset)
 				write_reax_file(dataset,best=True,error = best_min.fun)
 				print dataset.name, 'new best error = %.4g' % best_min.fun
-
-				# For refreshing the bounds:
-				# print 'New best error number %3d = %10.4g' % (len(param_hist[1]),best_min.fun)
-				# param_hist=extend_parameter_history(param_hist,best_min.x)
-				# if len(param_hist[1])==60:
-				# 	param_hist, bounds, log = rebound(param_hist)
-				# log.write(str(best_min.x)+' ' +str(best_min.fun)+'\n')
 
 		return best_min
 
