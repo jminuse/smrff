@@ -385,22 +385,26 @@ run 1''').splitlines()
 				relative_energy_error += ( (s.lammps_energy-s.energy)/(s.energy+1.0) )**2
 				absolute_energy_error += (s.lammps_energy-s.energy)**2
 			except OverflowError: return 1e10
-			#print m.energy, m.lammps_energy
+			#print s.energy, s.lammps_energy
 
-			for i,a in enumerate(system.atoms):
+			sum_forces = 0.0
+			for i,a in enumerate(s.atoms):
 				fx, fy, fz = a.lfx, a.lfy, a.lfz
 				real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
+				sum_forces += real_force_squared #for debugging
 				try:
 					relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
 					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 				except OverflowError:
 					return 1e10
+			print sum_forces
 	
 	relative_force_error = math.sqrt( relative_force_error/len(system.atoms) )
 	absolute_force_error = math.sqrt( absolute_force_error/len(system.atoms) )
 	relative_energy_error = math.sqrt( relative_energy_error/len(system.molecules) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(system.molecules) )
 
+	print 'error', relative_energy_error, relative_force_error
 	error = relative_energy_error + relative_force_error
 	
 	if math.isnan(error):
@@ -500,6 +504,10 @@ def run(run_name, other_run_names=[]):
 		for ff in file_list:
 			if ff.endswith('.log'):
 				name = ff[:-4]
+				filenames.append(name)
+	random.seed(1)
+	random.shuffle(filenames)
+	for name in filenames:
 				if not name.startswith('PbCl2'): continue
 				if not name.endswith('_def2SVP'): continue
 				energy, atoms = g09.parse_atoms(name, check_convergence=True)
@@ -576,7 +584,7 @@ def run(run_name, other_run_names=[]):
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print dataset.name, 'starting error: %.4g' % best_min.fun
-		#exit() #just print starting error
+		exit() #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
 			if dataset.how_long_since_checked_others > 10:
