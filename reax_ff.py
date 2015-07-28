@@ -274,16 +274,16 @@ def trim_spaces(num,space_count=8,i=False):
 def spaced_numbered_list(numlist):
 	return ' '.join(map(trim_spaces, numlist))
 
-def write_reax_file(system, best=False,error=None):
+def write_reax_file(dataset, best=False,error=None):
 	if best:
-		f = open(system.name+'_best.reax', 'w')
+		f = open(dataset.name+'_best.reax', 'w')
 	else:
-		f = open(system.name+'.reax', 'w')
+		f = open(dataset.name+'.reax', 'w')
 
 	# For readibility
 	delim = ' !'
 	s = "     "
-	rp=system.reax_params
+	rp=dataset.reax_params
 	if error:
 		error_string='Error: ' + str(error) + '  '
 	else:
@@ -337,73 +337,61 @@ def write_reax_file(system, best=False,error=None):
 	f.close()
 
 
-def set_lammps_parameters(system):
-	write_reax_file(system)
-	
-	mc = 1
-	for element_string, molecules in system.molecules_by_elements.iteritems():
-		for m in molecules:
-			system.lmp.command('unfix %d' % mc)
-			mc += 1		
-	
-	system.lmp.command('pair_coeff * * '+system.name+'.reax Pb Cl '+(' NULL'*(len(system.atom_types)-2))) #is it possible to do this with the LAMMPS set command, to avoid writing the file to disk?
-	#system.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
-	
-	mc = 1
-	for element_string, molecules in system.molecules_by_elements.iteritems():
-		for m in molecules:
-			system.lmp.command( 'group %d molecule %d' % (mc, mc) )
-			system.lmp.command( 'fix %d %d qeq/reax 1 0.0 10.0 1.0e-6 reax/c' % (mc,mc) )
-			mc += 1
-	
-	for t in system.atom_types:
-		pass
-		#if hasattr(t,'vdw_e'):
-		#	system.lmp.command('set type %d charge %f' % (t.lammps_type, t.charge))
-		#	system.lmp.command('pair_coeff %d * lj/cut/coul/cut %f	%f' % (t.lammps_type, t.vdw_e, t.vdw_r) )
-	for t in system.bond_types:
-		system.lmp.command('bond_coeff %d	%f %f' % (t.lammps_type, t.e, t.r) )
-	for t in system.angle_types:
-		system.lmp.command('angle_coeff %d	%f %f' % (t.lammps_type, t.e, t.angle) )
-	for t in system.dihedral_types:
-		system.lmp.command('dihedral_coeff %d	%f %f %f %f' % ((t.lammps_type,)+t.e))
-
-def calculate_error(system):
+def calculate_error(dataset):
+	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
 	#run LAMMPS
-	set_lammps_parameters(system)
-	system.lmp.command('run 1')
-	lammps_energies = system.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
-	lammps_forces = system.lmp.extract_atom('f',3)
+	for system in dataset.systems:
+		if False: #hide screen
+			lmp = lammps('',['-log',dataset.name+'.log','-screen','none'])
+		else: #show screen
+			lmp = lammps('',['-log',dataset.name+'.log'])
+
+		commands = ('''units real
+atom_style full
+pair_style reax/c NULL
+bond_style harmonic
+angle_style harmonic
+dihedral_style opls
+
+boundary f f f
+read_data	'''+system.name+'''.data
+
+compute atom_pe all pe/atom
+compute		test_pe all reduce sum c_atom_pe
+thermo_style custom pe c_test_pe
+pair_coeff * * '''+dataset.name+'''.reax Pb Cl
+fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+run 1''').splitlines()
 	
-	#assign energies to their proper groups of atoms
-	atom_count = 0
-	for m in system.molecules:
-		m.lammps_energy = sum( [lammps_energies[i] for i in range(atom_count, len(m.atoms)+atom_count)] )
-		atom_count += len(m.atoms)
+		for line in commands:
+			lmp.command(line)
+		
+		system.lammps_energy = sum( lmp.extract_compute('atom_pe',1,1) ) #http://lammps.sandia.gov/doc/Section_python.html
+		system.lammps_forces = lmp.extract_atom('f',3)
+		lmp.close()
 	
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
-	for elements,molecules in system.molecules_by_elements.iteritems():
-		baseline_energy = molecules[0].lammps_energy #should be in order of increasing energy
-		for m in molecules:
-			m.lammps_energy -= baseline_energy
+	relative_force_error, absolute_force_error = 0.0, 0.0
+	for elements,systems in dataset.by_elements.iteritems():
+		baseline_energy = systems[0].lammps_energy #should be in order of increasing energy
+		for s in systems:
+			s.lammps_energy -= baseline_energy
 			try:
-				relative_energy_error += ( (m.lammps_energy-m.energy)/(m.energy+1.0) )**2
-				absolute_energy_error += (m.lammps_energy-m.energy)**2
+				relative_energy_error += ( (s.lammps_energy-s.energy)/(s.energy+1.0) )**2
+				absolute_energy_error += (s.lammps_energy-s.energy)**2
 			except OverflowError: return 1e10
 			#print m.energy, m.lammps_energy
-	#exit()
-	#calculate force error
-	relative_force_error, absolute_force_error = 0.0, 0.0
-	for i,a in enumerate(system.atoms):
-		fx, fy, fz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
-		real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
-		try:
-			relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
-			absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
-		except OverflowError:
-			return 1e10
+
+			for i,a in enumerate(system.atoms):
+				fx, fy, fz = system.lammps_forces[i][0], system.lammps_forces[i][1], system.lammps_forces[i][2]
+				real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
+				try:
+					relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
+					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
+				except OverflowError:
+					return 1e10
 	
 	relative_force_error = math.sqrt( relative_force_error/len(system.atoms) )
 	absolute_force_error = math.sqrt( absolute_force_error/len(system.atoms) )
@@ -412,8 +400,6 @@ def calculate_error(system):
 
 	error = relative_energy_error + relative_force_error
 	
-	#print 'Error components:', absolute_energy_error, absolute_force_error, relative_energy_error, relative_force_error
-	
 	if math.isnan(error):
 		return 1e10
 	else:
@@ -421,14 +407,6 @@ def calculate_error(system):
 
 def pack_params(system):
 	params, names = [], []
-	for t in system.bond_types:
-		params += [t.e, t.r]
-	for t in system.angle_types:
-		params += [t.e, t.angle]
-	for t in system.dihedral_types:
-		if len(t.e)==3:
-			t.e = list(t.e)+[0.0]
-		params += list(t.e)
 	
 	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
 		names_list = system.reax_params.atom_types_names
@@ -472,15 +450,6 @@ def pack_params(system):
 
 def unpack_params(params, system):
 	p = 0
-	for t in system.bond_types:
-		t.e, t.r = params[p], params[p+1]
-		p += 2
-	for t in system.angle_types:
-		t.e, t.angle = params[p], params[p+1]
-		p += 2
-	for t in system.dihedral_types:
-		t.e = tuple(params[p:p+4])
-		p += 4
 	
 	for atom,include in zip(system.reax_params.atom_types, system.reax_includes.atom_types):
 		for line in range(4):
@@ -508,7 +477,7 @@ def unpack_params(params, system):
 				thbp[i] = params[p]
 				p += 1
 
-def run(system_name, other_system_names=[]):
+def run(run_name, other_run_names=[]):
 	Cl_ = 66
 	H_ = 54
 	N_ = 53
@@ -522,98 +491,53 @@ def run(system_name, other_system_names=[]):
 		Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.0, vdw_r=3.0),
 	}
 
-	system = utils.System(box_size=[100, 100, 100], name=system_name)
-
-	# for root, dirs, file_list in os.walk("/fs/home/jms875/Documents/perovskites/smrff/gaussian"):
-	fil = ['PbCl2_0_def2SVP','PbCl2_10_def2SVP','PbCl2_11_def2SVP','PbCl2_12_def2SVP','PbCl2_13_def2SVP','PbCl2_14_def2SVP','PbCl2_15_def2SVP','PbCl2_16_def2SVP','PbCl2_17_def2SVP','PbCl2_18_def2SVP','PbCl2_19_def2SVP','PbCl2_1_def2SVP','PbCl2_20_def2SVP','PbCl2_21_def2SVP','PbCl2_22_def2SVP','PbCl2_23_def2SVP','PbCl2_24_def2SVP','PbCl2_2_def2SVP','PbCl2_3_def2SVP','PbCl2_4_def2SVP','PbCl2_5_def2SVP','PbCl2_6_def2SVP','PbCl2_7_def2SVP','PbCl2_8_def2SVP','PbCl2_9_def2SVP','PbCl2_def2SVP','PbCl2_opt_def2SVP','PbCl2_p0_def2SVP','PbCl2_p10_def2SVP','PbCl2_p11_def2SVP','PbCl2_p12_def2SVP','PbCl2_p13_def2SVP','PbCl2_p14_def2SVP','PbCl2_p15_def2SVP','PbCl2_p16_def2SVP','PbCl2_p17_def2SVP','PbCl2_p18_def2SVP','PbCl2_p19_def2SVP','PbCl2_p1_def2SVP','PbCl2_p2_def2SVP','PbCl2_p3_def2SVP','PbCl2_p4_def2SVP','PbCl2_p5_def2SVP','PbCl2_p6_def2SVP','PbCl2_p7_def2SVP','PbCl2_p8_def2SVP','PbCl2_p9_def2SVP','PbCl2_r0_def2SVP','PbCl2_r10_def2SVP','PbCl2_r11_def2SVP','PbCl2_r12_def2SVP','PbCl2_r13_def2SVP','PbCl2_r14_def2SVP','PbCl2_r15_def2SVP','PbCl2_r16_def2SVP','PbCl2_r17_def2SVP','PbCl2_r18_def2SVP','PbCl2_r19_def2SVP','PbCl2_r1_def2SVP','PbCl2_r2_def2SVP','PbCl2_r3_def2SVP','PbCl2_r4_def2SVP','PbCl2_r5_def2SVP','PbCl2_r6_def2SVP','PbCl2_r7_def2SVP','PbCl2_r8_def2SVP','PbCl2_r9_def2SVP']
-	fil = fil[:31]
-	random.seed(400)
-	random.shuffle(fil)
-	count = 0
-	for ff in fil:
-		# if ff.endswith('.log'):
-		name = ff
-		if not name.startswith('PbCl2'): continue
-		if not name.endswith('_def2SVP'): continue
-		energy, atoms = g09.parse_atoms(name, check_convergence=True)
-		if len(atoms)!=3: continue
-		total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
-		total.energy = energy*627.509 #convert energy from Hartree to kcal/mol
-		total.element_string = ' '.join( [a.element for a in total.atoms] )
-		print 'Read', total.element_string, 'from', name
-		for i,a in enumerate(total.atoms):
-			b = atoms[i]
-			a.x, a.y, a.z = b.x, b.y, b.z
-			a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
-		system.add(total, count*10000.0)
-		count += 1
-	#make system big enough to hold all atoms
-	system.box_size[0] = max(system.atoms, key=lambda a:a.x).x-min(system.atoms, key=lambda a:a.x).x
-	system.box_size[1] = max(system.atoms, key=lambda a:a.y).y-min(system.atoms, key=lambda a:a.y).y
-	system.box_size[2] = max(system.atoms, key=lambda a:a.z).z-min(system.atoms, key=lambda a:a.z).z
-	#center atoms
-	for a in system.atoms:
-		a.x -= system.box_size[0]*0.5
-	system.box_size[0] += 100
-	system.box_size[1] += 10
-	system.box_size[2] += 10
-	#group molecules by .element_string
-	system.molecules_by_elements = {}
-	for m in system.molecules:
-		if m.element_string not in system.molecules_by_elements:
-			system.molecules_by_elements[ m.element_string ] = []
-		system.molecules_by_elements[ m.element_string ].append(m)
+	dataset = utils.Struct(name=run_name, systems=[])
+	filenames = []
+	for root, dirs, file_list in os.walk('gaussian'):
+		for ff in file_list:
+			if ff.endswith('.log'):
+				name = ff[:-4]
+				if not name.startswith('PbCl2'): continue
+				if not name.endswith('_def2SVP'): continue
+				energy, atoms = g09.parse_atoms(name, check_convergence=True)
+				if len(atoms)!=3: continue
+				system = utils.System(box_size=[100, 100, 100], name=name)
+				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
+				system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
+				system.element_string = ' '.join( [a.element for a in total.atoms] )
+				print 'Read', system.element_string, 'from', name
+				for i,a in enumerate(total.atoms):
+					b = atoms[i]
+					a.x, a.y, a.z = b.x, b.y, b.z
+					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
+				system.add(total)
+				dataset.systems.append(system)
+	#group systems by .element_string
+	dataset.by_elements = {}
+	for system in dataset.systems:
+		if system.element_string not in dataset.by_elements:
+			dataset.by_elements[ system.element_string ] = []
+		dataset.by_elements[ system.element_string ].append(system)
 	#sort molecules of same type by energy, set baseline energy as zero
-	for element_string, molecules in system.molecules_by_elements.iteritems():
-		molecules.sort(key=lambda m:m.energy)
-		baseline_energy = molecules[0].energy
-		for m in molecules:
-			m.energy -= baseline_energy #baseline energy = 0.0
+	for element_string, systems in dataset.by_elements.iteritems():
+		systems.sort(key=lambda s:s.energy)
+		baseline_energy = systems[0].energy
+		for s in systems:
+			s.energy -= baseline_energy #baseline energy = 0.0
 
 	os.chdir('lammps')
-	files.write_lammps_data(system)
+	for system in dataset.systems:
+		files.write_lammps_data(system)
 
-	if True:
-		system.lmp = lammps('',['-log',system.name+'.log','-screen','none'])
-	else:
-		system.lmp = lammps('',['-log',system.name+'.log'])
-
-	commands = ('''units real
-	atom_style full
-	pair_style reax/c NULL
-	bond_style harmonic
-	angle_style harmonic
-	dihedral_style opls
-
-	boundary f f f
-	read_data	'''+system.name+'''.data
-
-	compute atom_pe all pe/atom
-	compute		test_pe all reduce sum c_atom_pe
-	thermo_style custom pe c_test_pe
-	pair_coeff * * ../input.reax Pb Cl '''+(' NULL'*(len(system.atom_types)-2)) ).splitlines()
-	
-	mc = 1
-	for element_string, molecules in system.molecules_by_elements.iteritems():
-		for m in molecules:
-			commands.append( 'group %d molecule %d' % (mc, mc) )
-			commands.append( 'fix %d all qeq/reax 1 0.0 10.0 1.0e-6 reax/c' % mc )
-			mc += 1
-	
-	for line in commands:
-		system.lmp.command(line)
-
-	system.reax_params = read_reax_file('../input.reax')
-	system.reax_includes, bounds = read_reax_include_file('../include.reax',system.reax_params)
+	dataset.reax_params = read_reax_file('../input.reax')
+	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
 
 	def calculate_error_from_list(params):
-		unpack_params(params, system)
-		for t in system.atom_types + system.bond_types + system.angle_types + system.dihedral_types:
-			t.written_to_lammps = False
-		error = calculate_error(system)
+		unpack_params(params, dataset)
+		error = calculate_error(dataset)
 		return error
 
-	initial_params, names = pack_params(system)
+	initial_params, names = pack_params(dataset)
 	for i in range(len(names)):
 		if names[i].endswith('gamma_w'):
 			if bounds[i][0]<=.5:
@@ -628,19 +552,19 @@ def run(system_name, other_system_names=[]):
 	for x,y,z in zip(names,initial_params,bounds):
 		print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
-	#get params from other systems
-	system.others = [utils.System(name=n) for n in other_system_names]
-	def check_others(system):
-		for other in system.others:
+	#get params from other, parallel runs
+	dataset.others = [utils.Struct(name=n) for n in other_run_names]
+	def check_others(dataset):
+		for other in dataset.others:
 			other.bond_types, other.angle_types, other.dihedral_types, = [], [], []
 			if os.path.exists('../'+other.name+'_best.reax'):
 				other.reax_params = [utils.Struct(reax_params=read_reax_file('../'+other.name+'_best.reax')[0]) ]
-				other.reax_includes = system.reax_includes
+				other.reax_includes = dataset.reax_includes
 				other.list, _ = pack_params(other)
 			else:
 				other.list = None
-		system.how_long_since_checked_others = 0
-	check_others(system)
+		dataset.how_long_since_checked_others = 0
+	check_others(dataset)
 	
 	#optimize
 	import numpy
@@ -648,12 +572,12 @@ def run(system_name, other_system_names=[]):
 
 	def stochastic(use_gradient=True):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-		print system.name, 'starting error: %.4g' % best_min.fun
+		print dataset.name, 'starting error: %.4g' % best_min.fun
 		exit() #just print starting error
 		def new_param_guess(start, gauss=True):
-			system.how_long_since_checked_others += 1
-			if system.how_long_since_checked_others > 10:
-				check_others(system)
+			dataset.how_long_since_checked_others += 1
+			if dataset.how_long_since_checked_others > 10:
+				check_others(dataset)
 			
 			while True: #keep going until new params are generated
 				params = []
@@ -677,9 +601,9 @@ def run(system_name, other_system_names=[]):
 					continue
 				else:
 					#keep different solutions apart
-					if system.others:
+					if dataset.others:
 						distances = []
-						for other in system.others:
+						for other in dataset.others:
 							if other.list:
 								distances.append( sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(others.list, params, bounds)])**0.5 )
 							else:
@@ -724,16 +648,16 @@ def run(system_name, other_system_names=[]):
 				#	start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8, bounds=bounds)
 				guess = utils.Struct(fun=fun,x=x)
-				print system.name, 'error', start_error, guess.fun, best_min.fun
+				print dataset.name, 'error', start_error, guess.fun, best_min.fun
 			else: #non-gradient optimization
 				params = new_param_guess(best_min.x, gauss=True)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-				#print system.name, 'error', guess.fun, best_min.fun
+				#print dataset.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
 				best_min = guess
-				unpack_params(best_min.x, system)
-				write_reax_file(system,best=True,error = best_min.fun)
-				print system.name, 'new best error = %.4g' % best_min.fun
+				unpack_params(best_min.x, dataset)
+				write_reax_file(dataset,best=True,error = best_min.fun)
+				print dataset.name, 'new best error = %.4g' % best_min.fun
 
 				# For refreshing the bounds:
 				# print 'New best error number %3d = %10.4g' % (len(param_hist[1]),best_min.fun)
