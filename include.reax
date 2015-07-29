@@ -49,7 +49,7 @@ Reactive MD-force field: Cu/O/H force field; van Duin et al., 2010 Cl parameters
 			(-25,-2.5000)	(1.5,5.0)	0	(1.0000,8.0000)	(2.2632,3.6411)	0	0	0
  Cl        0          0          0          0          0          0          0          0           
            0          0          0          0          0          0          0          0           
-           0          0          0          0          0          0          0          0            
+           0          0          0       g   0          0          0          0          0            
            0          0          0          0          0          0          0          0         
   2  ! A1  A2 De_s   De_p     De_pp    p_be1       p_bo5    v13cor   p_bo6    p_ovun1       
              p_be2  p_bo3    p_bo4     *****       p_bo1    p_bo2    ovc      *****  

@@ -383,7 +383,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				relative_energy_error += ( (s.lammps_energy-s.energy)/(s.energy+1.0) )**2
 				absolute_energy_error += (s.lammps_energy-s.energy)**2
 			except OverflowError: return 1e10
-			#print s.energy, s.lammps_energy
+			#print s.name, s.energy, s.lammps_energy
 
 			for i,a in enumerate(s.atoms):
 				fx, fy, fz = a.lfx, a.lfy, a.lfz
@@ -393,7 +393,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 				except OverflowError:
 					return 1e10
-	
+	#exit()
 	n_atoms = sum( [len(s.atoms) for s in dataset.systems] )
 	relative_force_error = math.sqrt( relative_force_error/n_atoms )
 	absolute_force_error = math.sqrt( absolute_force_error/n_atoms )
@@ -505,9 +505,12 @@ def run(run_name, other_run_names=[]):
 	#random.shuffle(filenames)
 	for name in filenames:
 				if not name.startswith('PbCl2'): continue
-				if not name.endswith('_def2SVP'): continue
-				energy, atoms = g09.parse_atoms(name, check_convergence=True)
+				if not name.endswith('_vac'): continue
+				result = g09.parse_atoms(name, check_convergence=True)
+				if not result: continue
+				energy, atoms = result
 				if len(atoms)!=3: continue
+				if utils.dist(atoms[0],atoms[1]) < 2.0 or utils.dist(atoms[0],atoms[2]) < 2.0 or utils.dist(atoms[1],atoms[2]) < 2.0: continue
 				system = utils.System(box_size=[40, 40, 40], name=name)
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 				system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -636,7 +639,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				params = []
 				for p,b in zip(start, bounds):
 					if gauss: #Gaussian random
-						new = random.gauss(p, abs(p)*0.5 + 0.01*(b[1]-b[0]) ) if random.random()<0.2 else p
+						new = random.gauss(p, 0.2*(b[1]-b[0]) ) if random.random()<0.3 else p
 						#reflect
 						if new < b[0]:
 							new += (b[0]-new)
@@ -692,26 +695,27 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 					exit()
 			return numpy.array(gradient)
 
-		#while True:
-		for step in range(100):
+		while True:
 			if use_gradient:
-				params = new_param_guess(best_min.x, gauss=True)
+				params = new_param_guess(best_min.x, gauss=False)
 				start_error = calculate_error_from_list(params)
 				#while start_error > 2.0:
 				#	params = new_param_guess(best_min.x, gauss=True)
 				#	start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8, bounds=bounds)
 				guess = utils.Struct(fun=fun,x=x)
-				print dataset.name, 'error', start_error, guess.fun, best_min.fun
+				dist_from_best = sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(x, best_min.x, bounds)])**0.5
+				print dataset.name, 'error', start_error, guess.fun, best_min.fun, 'Dist:', dist_from_best
 			else: #non-gradient optimization
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-				print dataset.name, 'error', guess.fun, best_min.fun
+				#print dataset.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
+				dist_from_best = sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(guess.x, best_min.x, bounds)])**0.5
 				best_min = guess
 				unpack_params(best_min.x, dataset)
 				write_reax_file(dataset,best=True,error = best_min.fun)
-				print dataset.name, 'new best error = %.4g' % best_min.fun
+				print dataset.name, 'new best error = %.4g' % best_min.fun, 'Dist =', dist_from_best
 
 		return best_min
 
@@ -725,5 +729,5 @@ def run_multiple(jobname, N):
 		p.start()
 
 #run('test')
-run_multiple('test1', 4)
+run_multiple('test1', 8)
 

@@ -80,5 +80,52 @@ def new_cl_jobs():
 		g09.job(name, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None).wait()
 		shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
 
-change_cml()
+def cl_no_solv():
+	for root, dirs, file_list in os.walk("gaussian"):
+		for ff in file_list:
+			if ff.endswith('.cml') and 'Cl2' in ff and 'PbCl2_PbCl2' not in ff:
+				old_job = ff[:-4]
+				name = old_job.replace('def2SVP', 'vac')
+				if os.path.exists('gaussian/%s.log' % name):
+					print name
+					continue
+				print '%20s' % old_job, name
+				g09.job(name, 'HSEH1PBE/Def2TZVP Force Geom=Check Guess=Read', previous=old_job, queue=None).wait()
+				shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
+
+def closer_cl_jobs():
+	for i in range(10):
+		atoms = g09.atoms('PbCl2_opt_vac')
+		for a in [atoms[0], atoms[2]]:
+			a.x += 0.5*(2-random.random())
+			a.y += 0.5*(2-random.random())
+			a.z += 0.5*(2-random.random())
+		name = 'PbCl2_w%d_vac' % i
+		g09.job(name, 'HSEH1PBE/Def2TZVP Force Guess=Read', atoms, previous='PbCl2_opt_vac', queue=None).wait()
+		shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
+		#g09.job('PbCl2_opt_vac', 'HSEH1PBE/Def2TZVP Opt Guess=Read Geom=Check', previous='PbCl2_opt_def2SVP', queue=None).wait()
+
+def rotate_cl_jobs():
+	#frames = []
+	for degrees in range(80,190,10):
+		atoms = [utils.Atom('Pb',0.,0.,0.), utils.Atom('Cl',2.459898,0.,0.), utils.Atom('Cl',2.459898,0.,0.)  ]
+		t = degrees*math.pi/180
+		R = [[math.cos(t), -math.sin(t), 0.],
+			 [math.sin(t),  math.cos(t), 0.],
+			 [0., 0., 1.]]
+		atoms[2].x, atoms[2].y, atoms[2].z = utils.matvec(R, (atoms[2].x, atoms[2].y, atoms[2].z) )
+		center = copy.deepcopy(atoms[1])
+		for a in atoms:
+			a.x -= center.x
+			a.y -= center.y
+			a.z -= center.z
+		
+		name = 'PbCl2_rot%d_vac' % degrees
+		print name
+		#frames.append(atoms)
+		g09.job(name, 'HSEH1PBE/Def2TZVP Force Guess=Read', atoms, previous='PbCl2_opt_vac', queue=None).wait()
+		shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
+	#files.write_xyz(frames)
+
+rotate_cl_jobs()
 
