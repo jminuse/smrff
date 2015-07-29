@@ -341,6 +341,7 @@ def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
 	#run LAMMPS
+	#dataset.lmp.command('pair_coeff * * '+dataset.name+'.reax Pb Cl')
 	for s in dataset.systems:
 		commands = ('''clear
 units real
@@ -364,6 +365,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	
 		for i,a in enumerate(s.atoms):
 			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+			#dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
 		dataset.lmp.command('run 1')
 		
 		lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
@@ -661,7 +663,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 						distances = []
 						for other in dataset.others:
 							if other.list:
-								distances.append( sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(others.list, params, bounds)])**0.5 )
+								distances.append( sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(others.list, params, bounds)])**0.5 / len(params) )
 							else:
 								distances.append(1e6)
 						if all( [ d>0.01*len(params) for d in distances ] ):
@@ -704,18 +706,18 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				#	start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8, bounds=bounds)
 				guess = utils.Struct(fun=fun,x=x)
-				dist_from_best = sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(x, best_min.x, bounds)])**0.5
-				print dataset.name, 'error', start_error, guess.fun, best_min.fun, 'Dist:', dist_from_best
+				dif_from_best = 100*sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(x, best_min.x, bounds)])**0.5 / len(best_min.x)
+				print dataset.name, 'error', start_error, guess.fun, best_min.fun, 'Dif = %.1%%' % dif_from_best
 			else: #non-gradient optimization
 				params = new_param_guess(best_min.x, gauss=True)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
 				#print dataset.name, 'error', guess.fun, best_min.fun
 			if guess.fun < best_min.fun:
-				dist_from_best = sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(guess.x, best_min.x, bounds)])**0.5
+				dif_from_best = 100*sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(guess.x, best_min.x, bounds)])**0.5 / len(best_min.x)
 				best_min = guess
 				unpack_params(best_min.x, dataset)
 				write_reax_file(dataset,best=True,error = best_min.fun)
-				print dataset.name, 'new best error = %.4g' % best_min.fun, 'Dist =', dist_from_best
+				print dataset.name, 'new best error = %.4g' % best_min.fun, 'Dif = %.1f%%' % dif_from_best
 
 		return best_min
 
@@ -729,5 +731,5 @@ def run_multiple(jobname, N):
 		p.start()
 
 #run('test')
-run_multiple('test1', 8)
+run_multiple('test1', 4)
 
