@@ -341,7 +341,9 @@ def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
 	#run LAMMPS
+	#dataset.lmp.command('unfix 1')
 	#dataset.lmp.command('pair_coeff * * '+dataset.name+'.reax Pb Cl')
+	#dataset.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 	for s in dataset.systems:
 		commands = ('''clear
 units real
@@ -352,7 +354,7 @@ angle_style harmonic
 dihedral_style opls
 
 boundary f f f
-read_data	'''+dataset.systems[0].name+'''.data
+read_data	'''+s.name+'''.data
 
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
@@ -363,9 +365,9 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 		for line in commands:
 			dataset.lmp.command(line)
 	
-		for i,a in enumerate(s.atoms):
-			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
-			#dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+		#for i,a in enumerate(s.atoms):
+		#	dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+		#	dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
 		dataset.lmp.command('run 1')
 		
 		lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
@@ -377,6 +379,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	relative_force_error, absolute_force_error = 0.0, 0.0
+	xx,yy = [],[]
 	for elements,systems in dataset.by_elements.iteritems():
 		baseline_energy = systems[0].lammps_energy #should be in order of increasing energy
 		for s in systems:
@@ -386,6 +389,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				absolute_energy_error += (s.lammps_energy-s.energy)**2
 			except OverflowError: return 1e10
 			#print s.name, s.energy, s.lammps_energy
+			xx.append(s.energy); yy.append(s.lammps_energy)
 
 			for i,a in enumerate(s.atoms):
 				fx, fy, fz = a.lfx, a.lfy, a.lfz
@@ -395,7 +399,14 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 				except OverflowError:
 					return 1e10
-	#exit()
+	
+	if False: #plot energies
+		import matplotlib.pyplot as plt
+		plt.plot(xx)
+		plt.plot(yy)
+		plt.show()
+		exit()
+	
 	n_atoms = sum( [len(s.atoms) for s in dataset.systems] )
 	relative_force_error = math.sqrt( relative_force_error/n_atoms )
 	absolute_force_error = math.sqrt( absolute_force_error/n_atoms )
@@ -502,12 +513,13 @@ def run(run_name, other_run_names=[]):
 			if ff.endswith('.log'):
 				name = ff[:-4]
 				filenames.append(name)
-	#filenames = filenames[:5]
+	#filenames = filenames[::4]
 	#random.seed(10)
 	#random.shuffle(filenames)
 	for name in filenames:
 				if not name.startswith('PbCl2'): continue
 				if not name.endswith('_vac'): continue
+				if '_p' in name: continue #weed out bad cml-log match: inconsistent elements
 				result = g09.parse_atoms(name, check_convergence=True)
 				if not result: continue
 				energy, atoms = result
@@ -517,9 +529,16 @@ def run(run_name, other_run_names=[]):
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 				system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 				system.element_string = ' '.join( [a.element for a in total.atoms] )
+				element_string_2 = ' '.join( [a.element for a in atoms] )
+				if element_string_2 != system.element_string:
+					print 'Inconsistent elements in cml vs log:', name
+					continue
 				print 'Read', system.element_string, 'from', name
 				for i,a in enumerate(total.atoms):
 					b = atoms[i]
+					if a.element != b.element:
+						print 'Inconsistent elements in cml vs log:', name
+						exit()
 					a.x, a.y, a.z = b.x, b.y, b.z
 					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
 				system.add(total)
@@ -543,7 +562,8 @@ def run(run_name, other_run_names=[]):
 		dataset.lmp = lammps('',['-log',dataset.name+'.log'])
 	
 	os.chdir('lammps')
-	files.write_lammps_data(dataset.systems[0])
+	for s in dataset.systems:
+		files.write_lammps_data(s)
 	
 	commands = ('''units real
 atom_style full
@@ -699,21 +719,20 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		while True:
 			if use_gradient:
-				params = new_param_guess(best_min.x, gauss=False)
+				params = new_param_guess(best_min.x, gauss=True)
 				start_error = calculate_error_from_list(params)
 				#while start_error > 2.0:
 				#	params = new_param_guess(best_min.x, gauss=True)
 				#	start_error = calculate_error_from_list(params)
 				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8, bounds=bounds)
 				guess = utils.Struct(fun=fun,x=x)
-				dif_from_best = 100*sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(x, best_min.x, bounds)])**0.5 / len(best_min.x)
-				print dataset.name, 'error', start_error, guess.fun, best_min.fun, 'Dif = %.1%%' % dif_from_best
 			else: #non-gradient optimization
 				params = new_param_guess(best_min.x, gauss=True)
 				guess = utils.Struct(fun=calculate_error_from_list(params),x=params)
-				#print dataset.name, 'error', guess.fun, best_min.fun
+				start_error = guess.fun
+			dif_from_best = 100*sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(guess.x, best_min.x, bounds)])**0.5 / len(best_min.x)
+			#print dataset.name, 'error', start_error, guess.fun, best_min.fun, 'Dif = %.1f%%' % dif_from_best
 			if guess.fun < best_min.fun:
-				dif_from_best = 100*sum([ ( (x-y)/(b[1]-b[0]) )**2 for x,y,b in zip(guess.x, best_min.x, bounds)])**0.5 / len(best_min.x)
 				best_min = guess
 				unpack_params(best_min.x, dataset)
 				write_reax_file(dataset,best=True,error = best_min.fun)
