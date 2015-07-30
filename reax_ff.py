@@ -427,7 +427,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	relative_energy_error = math.sqrt( relative_energy_error/len(dataset.systems) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(dataset.systems) )
 
-	error = relative_energy_error + relative_force_error
+	error = relative_energy_error# + relative_force_error
 	
 	if math.isnan(error):
 		return 1e10
@@ -755,7 +755,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		return best_min
 
-	stochastic(True)
+	stochastic(False)
 
 from multiprocessing import Process, Queue
 def run_multiple(jobname, N):
@@ -764,6 +764,6 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-run('test')
-#run_multiple('test1', 4)
+#run('test')
+run_multiple('test1', 4)
 
