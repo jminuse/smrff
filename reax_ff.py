@@ -379,7 +379,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	relative_force_error, absolute_force_error = 0.0, 0.0
-	xx,yy = [],[]
+	real_E,test_E,real_F,test_F = [],[],[],[]
 	for elements,systems in dataset.by_elements.iteritems():
 		baseline_energy = systems[0].lammps_energy #should be in order of increasing energy
 		for s in systems:
@@ -389,21 +389,35 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				absolute_energy_error += (s.lammps_energy-s.energy)**2
 			except OverflowError: return 1e10
 			#print s.name, s.energy, s.lammps_energy
-			xx.append(s.energy); yy.append(s.lammps_energy)
+			real_E.append(s.energy); test_E.append(s.lammps_energy)
 
 			for i,a in enumerate(s.atoms):
 				fx, fy, fz = a.lfx, a.lfy, a.lfz
 				real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
+				lammps_force_squared = fx**2 + fy**2 + fz**2
+				real_F.append(real_force_squared**0.5); test_F.append(lammps_force_squared**0.5)
 				try:
 					relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
 					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 				except OverflowError:
 					return 1e10
 	
-	if False: #plot energies
+	plot_forces = False
+	plot_energies = False
+	if plot_forces or plot_energies: #plot energies
 		import matplotlib.pyplot as plt
-		plt.plot(xx)
-		plt.plot(yy)
+		if plot_energies:
+			plt.plot(real_E, label='HSE06/TZVP energies')
+			plt.plot(test_E, label='REAX energies')
+			plt.xlabel('Runs (sorted by energy)')
+			plt.ylabel('Energy (kcal/mol)')
+		elif plot_forces:
+			real_F,test_F = [list(x) for x in zip(*sorted(zip(real_F,test_F)))] #sort forces
+			plt.plot(real_F, label='HSE06/TZVP forces')
+			plt.plot(test_F, label='REAX forces')
+			plt.xlabel('Atoms (sorted by force)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+		plt.title('%s REAX fit' % dataset.name)
 		plt.show()
 		exit()
 	
@@ -704,7 +718,8 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				if newx>bounds[i][1] or newx<bounds[i][0]:
 					newx = oldx - 0.0001*(bounds[i][1]-bounds[i][0])*sign_oldx
 				if newx>bounds[i][1] or newx<bounds[i][0]:
-					print 'Bounds exceeded:', oldx, newx, bounds[i][0], bounds[i][1]
+					pass
+					#print 'Bounds exceeded:', oldx, newx, bounds[i][0], bounds[i][1]
 					#exit()
 				dif = newx - oldx
 				if dif != 0.0:
@@ -724,7 +739,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				#while start_error > 2.0:
 				#	params = new_param_guess(best_min.x, gauss=True)
 				#	start_error = calculate_error_from_list(params)
-				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8, bounds=bounds)
+				x, fun, stats = fmin_l_bfgs_b(calculate_error_from_list, params, fprime=error_gradient, factr=1e8)#, bounds=bounds)
 				guess = utils.Struct(fun=fun,x=x)
 			else: #non-gradient optimization
 				params = new_param_guess(best_min.x, gauss=True)
@@ -740,7 +755,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		return best_min
 
-	stochastic(False)
+	stochastic(True)
 
 from multiprocessing import Process, Queue
 def run_multiple(jobname, N):
@@ -749,6 +764,6 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-#run('test')
-run_multiple('test1', 4)
+run('test')
+#run_multiple('test1', 4)
 
