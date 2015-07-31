@@ -127,5 +127,18 @@ def rotate_cl_jobs():
 		shutil.copyfile('gaussian/PbCl2_opt_def2SVP.cml', 'gaussian/'+name+'.cml')
 	#files.write_xyz(frames)
 
-rotate_cl_jobs()
+def PbCl2_2_vac():
+	#g09.job('PbCl2_2_opt_vac', 'HSEH1PBE/Def2TZVP Opt Guess=Read Geom=Check', previous='PbCl2_PbCl2_def2SVP', queue=None).wait()
+	for i in range(10):
+		atoms = g09.atoms('PbCl2_2_opt_vac')
+		for a in atoms:
+			if a.element != 'Pb':
+				a.x += 0.5*(2-random.random())
+				a.y += 0.5*(2-random.random())
+				a.z += 0.5*(2-random.random())
+		name = 'PbCl2_2_w%d_vac' % i
+		g09.job(name, 'HSEH1PBE/Def2TZVP Force Guess=Read', atoms, previous='PbCl2_2_opt_vac', queue=None)
+		shutil.copyfile('gaussian/PbCl2_2_opt_vac.cml', 'gaussian/'+name+'.cml')
+	
+PbCl2_2_vac()
 

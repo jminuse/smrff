@@ -533,12 +533,11 @@ def run(run_name, other_run_names=[]):
 	for name in filenames:
 				if not name.startswith('PbCl2'): continue
 				if not name.endswith('_vac'): continue
-				if '_p' in name: continue #weed out bad cml-log match: inconsistent elements
 				result = g09.parse_atoms(name, check_convergence=True)
-				if not result: continue
+				if not result: continue #don't use the log file if not converged
 				energy, atoms = result
-				if len(atoms)!=3: continue
-				if utils.dist(atoms[0],atoms[1]) < 2.0 or utils.dist(atoms[0],atoms[2]) < 2.0 or utils.dist(atoms[1],atoms[2]) < 2.0: continue
+				#if len(atoms)!=3: continue
+				if any( [a!=b and utils.dist(a,b)<2.0 for a in atoms for b in atoms] ): continue
 				system = utils.System(box_size=[40, 40, 40], name=name)
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 				system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
@@ -634,10 +633,6 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				other.list = None
 		dataset.how_long_since_checked_others = 0
 	check_others(dataset)
-	
-	#optimize
-	import numpy
-	from scipy.optimize import minimize, fmin_l_bfgs_b
 
 	def parameter_effect(initial_params=initial_params):
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
@@ -662,6 +657,9 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 		raise SystemExit # Exit once all parameters are tested
 
 	def stochastic(use_gradient=True):
+		if use_gradient:
+			import numpy
+			from scipy.optimize import minimize, fmin_l_bfgs_b
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print dataset.name, 'starting error: %.4g' % best_min.fun
 		# parameter_effect(initial_params)
@@ -764,6 +762,14 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-#run('test')
-run_multiple('test1', 4)
+run_multiple('test2', 10)
+
+def if_multiprocessing_does_not_work():
+	jobname = sys.argv[1]
+	if len(sys.argv)==2:
+		run(jobname)
+	else:
+		this_job = int(sys.argv[2])
+		n_other_jobs = int(sys.argv[3])
+		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
 
