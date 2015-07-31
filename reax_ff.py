@@ -362,12 +362,19 @@ thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
-	
+		dataset.lmp.command('delete_atoms group all')
 		for i,a in enumerate(s.atoms):
-			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
-			dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
-		commands=('''pair_coeff * * '''+dataset.name+'''.reax Pb Cl
-fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
+			if a.element=='Pb':
+				dataset.lmp.command('create_atoms 1 single %f  %f  %f' % ( a.x, a.y, a.z))
+			elif a.element=='Cl':
+				dataset.lmp.command('create_atoms 2 single %f  %f  %f' % ( a.x, a.y, a.z))	
+			else:
+				print "Unexpected element"
+				raise SystemExit
+			# dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+			# dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+# 		commands=('''pair_coeff * * '''+dataset.name+'''.reax Pb Cl
+# fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 
 		for line in commands:
@@ -431,7 +438,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	relative_energy_error = math.sqrt( relative_energy_error/len(dataset.systems) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(dataset.systems) )
 
-	error = relative_energy_error# + relative_force_error
+	error = relative_energy_error + relative_force_error
 	
 	if math.isnan(error):
 		return 1e10
@@ -557,6 +564,7 @@ def run(run_name, other_run_names=[]):
 					if a.element != b.element:
 						print 'Inconsistent elements in cml vs log:', name
 						exit()
+					a.element=b.element
 					a.x, a.y, a.z = b.x, b.y, b.z
 					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
 				system.add(total)
@@ -669,7 +677,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print dataset.name, 'starting error: %.4g' % best_min.fun
 		# parameter_effect(initial_params)
-		# exit() #just print starting error
+		# raise SystemExit #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
 			if dataset.how_long_since_checked_others > 10:
