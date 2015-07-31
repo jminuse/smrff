@@ -362,12 +362,16 @@ thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
+	
+		for i,a in enumerate(s.atoms):
+			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+			dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+		commands=('''pair_coeff * * '''+dataset.name+'''.reax Pb Cl
+fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
+
+
 		for line in commands:
 			dataset.lmp.command(line)
-	
-		#for i,a in enumerate(s.atoms):
-		#	dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
-		#	dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
 		dataset.lmp.command('run 1')
 		
 		lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
@@ -764,6 +768,6 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-#run('test')
-run_multiple('test1', 4)
+run('test')
+# run_multiple('test1', 4)
 
