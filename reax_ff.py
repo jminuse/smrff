@@ -340,11 +340,7 @@ def write_reax_file(dataset, best=False,error=None):
 def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
-	#run LAMMPS
-	#dataset.lmp.command('unfix 1')
-	dataset.lmp.command('pair_coeff * * '+dataset.name+'.reax Pb Cl')
-	#dataset.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
-	for s in dataset.systems:
+	for elements,systems in dataset.by_elements.iteritems():
 		commands = ('''clear
 units real
 atom_style full
@@ -354,7 +350,7 @@ angle_style harmonic
 dihedral_style opls
 
 boundary f f f
-read_data	'''+s.name+'''.data
+read_data	'''+systems[0].name+'''.data
 
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
@@ -362,22 +358,22 @@ thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
-	
-		for i,a in enumerate(s.atoms):
-			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
-			dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
-#		commands=('''pair_coeff * * '''+dataset.name+'''.reax Pb Cl
-#fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').
+		for line in commands:
+			dataset.lmp.command(line)
 
-		#for line in commands:
-		#	dataset.lmp.command(line)
-		dataset.lmp.command('run 1')
-		
-		lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
-		s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
-		lammps_forces = dataset.lmp.extract_atom('f',3)
-		for i,a in enumerate(s.atoms):
-			a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
+		for s in systems:
+
+			for i,a in enumerate(s.atoms):
+				dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+				dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+			
+			dataset.lmp.command('run 1')
+			
+			lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
+			s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
+			lammps_forces = dataset.lmp.extract_atom('f',3)
+			for i,a in enumerate(s.atoms):
+				a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 	
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
@@ -539,7 +535,7 @@ def run(run_name, other_run_names=[]):
 				result = g09.parse_atoms(name, check_convergence=True)
 				if not result: continue #don't use the log file if not converged
 				energy, atoms = result
-				if len(atoms)!=3: continue
+				#if len(atoms)!=3: continue
 				if any( [a!=b and utils.dist(a,b)<2.0 for a in atoms for b in atoms] ): continue
 				system = utils.System(box_size=[40, 40, 40], name=name)
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
@@ -555,6 +551,7 @@ def run(run_name, other_run_names=[]):
 					if a.element != b.element:
 						print 'Inconsistent elements in cml vs log:', name
 						exit()
+					a.element=b.element
 					a.x, a.y, a.z = b.x, b.y, b.z
 					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
 				system.add(total)
@@ -573,9 +570,9 @@ def run(run_name, other_run_names=[]):
 			s.energy -= baseline_energy #baseline energy = 0.0
 
 	if True: #hide screen
-		dataset.lmp = lammps('',['-log',dataset.name+'.log','-screen','none'])
+		dataset.lmp = lammps('',['-log','none','-screen','none'])
 	else: #show screen
-		dataset.lmp = lammps('',['-log',dataset.name+'.log'])
+		dataset.lmp = lammps('',['-log','none'])
 	
 	os.chdir('lammps')
 	for s in dataset.systems:
@@ -666,7 +663,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		print dataset.name, 'starting error: %.4g' % best_min.fun
 		# parameter_effect(initial_params)
-		# exit() #just print starting error
+		# raise SystemExit #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
 			if dataset.how_long_since_checked_others > 10:
