@@ -341,8 +341,7 @@ def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
 	for elements,systems in dataset.by_elements.iteritems():
-		for s in systems:
-			commands = ('''clear
+		commands = ('''clear
 units real
 atom_style full
 pair_style reax/c NULL
@@ -351,7 +350,7 @@ angle_style harmonic
 dihedral_style opls
 
 boundary f f f
-read_data	'''+s.name+'''.data
+read_data	'''+systems[0].name+'''.data
 
 neigh_modify every 1 delay 0 check no
 compute atom_pe all pe/atom
@@ -360,12 +359,13 @@ thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
-			for line in commands:
-				dataset.lmp.command(line)
-
-			#for i,a in enumerate(s.atoms):
-			#	dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
-			#	dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+		for line in commands:
+			dataset.lmp.command(line)
+		
+		for s in systems:
+			for i,a in enumerate(s.atoms):
+				dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+				dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
 			
 			dataset.lmp.command('run 1')
 			
@@ -402,7 +402,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 					return 1e10
 	
 	plot_forces = False
-	plot_energies = True
+	plot_energies = False
 	if plot_forces or plot_energies: #plot energies
 		import matplotlib.pyplot as plt
 		if plot_energies:
@@ -416,6 +416,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			plt.plot(test_F, label='REAX forces')
 			plt.xlabel('Atoms (sorted by force)')
 			plt.ylabel('Force (kcal/mol/Angstrom)')
+		plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
 		plt.title('%s REAX fit' % dataset.name)
 		plt.show()
 		exit()
@@ -505,7 +506,7 @@ def unpack_params(params, dataset):
 				thbp[i] = params[p]
 				p += 1
 
-def run(run_name, other_run_names=[]):
+def run(run_name, other_run_names=[],restart=False):
 	Cl_ = 66
 	H_ = 54
 	N_ = 53
@@ -577,7 +578,10 @@ def run(run_name, other_run_names=[]):
 	os.chdir('lammps')
 	for s in dataset.systems:
 		files.write_lammps_data(s)
-	
+	if restart and os.path.isfile('lammps/'+run_name+'_best.reax'):
+		input_file=run_name+'_best.reax'
+	else:
+		input_file='../input.reax'
 	commands = ('''units real
 atom_style full
 pair_style reax/c NULL
@@ -592,13 +596,13 @@ neigh_modify every 1 delay 0 check no
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
 thermo_style custom pe c_test_pe
-pair_coeff * * ../input.reax Pb Cl
+pair_coeff * * '''+input_file+''' Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 	for line in commands:
 		dataset.lmp.command(line)
 
-	dataset.reax_params = read_reax_file('../input.reax')
+	dataset.reax_params = read_reax_file(input_file)
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
 
 	def calculate_error_from_list(params):
@@ -757,11 +761,19 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	stochastic(False)
 
 from multiprocessing import Process, Queue
+from time import sleep
 def run_multiple(jobname, N):
 	queue = Queue()
+	procs=[]
 	for i in range(N):
-		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
-		p.start()
+		procs.append(Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i])))
+		procs[-1].start()
+	while True:
+		for i,p in enumerate(procs):
+			if not p.is_alive():
+				procs[i] = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(len(procs)) if other!=i],True))
+				procs[i].start()
+		sleep(15)
 
 def if_multiprocessing_does_not_work():
 	jobname = sys.argv[1]
@@ -772,6 +784,6 @@ def if_multiprocessing_does_not_work():
 		n_other_jobs = int(sys.argv[3])
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
 
-run('test')
-#run_multiple('test2', 4)
+#run('test')
+run_multiple('test2', 8)
 
