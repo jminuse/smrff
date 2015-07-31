@@ -577,7 +577,7 @@ def run(run_name, other_run_names=[],restart=False):
 	os.chdir('lammps')
 	for s in dataset.systems:
 		files.write_lammps_data(s)
-	if restart:
+	if restart and os.path.isfile('lammps/'+run_name+'_best.reax'):
 		input_file=run_name+'_best.reax'
 	else:
 		input_file='../input.reax'
