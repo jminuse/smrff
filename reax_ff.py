@@ -342,7 +342,7 @@ def calculate_error(dataset):
 	
 	#run LAMMPS
 	#dataset.lmp.command('unfix 1')
-	#dataset.lmp.command('pair_coeff * * '+dataset.name+'.reax Pb Cl')
+	dataset.lmp.command('pair_coeff * * '+dataset.name+'.reax Pb Cl')
 	#dataset.lmp.command('fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 	for s in dataset.systems:
 		commands = ('''clear
@@ -362,12 +362,15 @@ thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
-		for line in commands:
-			dataset.lmp.command(line)
 	
-		#for i,a in enumerate(s.atoms):
-		#	dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
-		#	dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+		for i,a in enumerate(s.atoms):
+			dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
+			dataset.lmp.command('set atom %d charge 0.0' % (i+1) )
+#		commands=('''pair_coeff * * '''+dataset.name+'''.reax Pb Cl
+#fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').
+
+		#for line in commands:
+		#	dataset.lmp.command(line)
 		dataset.lmp.command('run 1')
 		
 		lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
@@ -536,7 +539,7 @@ def run(run_name, other_run_names=[]):
 				result = g09.parse_atoms(name, check_convergence=True)
 				if not result: continue #don't use the log file if not converged
 				energy, atoms = result
-				#if len(atoms)!=3: continue
+				if len(atoms)!=3: continue
 				if any( [a!=b and utils.dist(a,b)<2.0 for a in atoms for b in atoms] ): continue
 				system = utils.System(box_size=[40, 40, 40], name=name)
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
@@ -762,8 +765,6 @@ def run_multiple(jobname, N):
 		p = Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i]))
 		p.start()
 
-run_multiple('test2', 10)
-
 def if_multiprocessing_does_not_work():
 	jobname = sys.argv[1]
 	if len(sys.argv)==2:
@@ -772,4 +773,7 @@ def if_multiprocessing_does_not_work():
 		this_job = int(sys.argv[2])
 		n_other_jobs = int(sys.argv[3])
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
+
+run('test')
+# run_multiple('test1', 4)
 
