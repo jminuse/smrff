@@ -139,6 +139,25 @@ def PbCl2_2_vac():
 		name = 'PbCl2_2_w%d_vac' % i
 		g09.job(name, 'HSEH1PBE/Def2TZVP Force Guess=Read', atoms, previous='PbCl2_2_opt_vac', queue=None)
 		shutil.copyfile('gaussian/PbCl2_2_opt_vac.cml', 'gaussian/'+name+'.cml')
-	
-PbCl2_2_vac()
+
+Cl_ = 66
+H_ = 54
+N_ = 53
+Pb_ = 111
+Pb = 907
+Cl = 838
+extra = {
+	Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.0, vdw_r=3.0),
+	Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.0, vdw_r=3.0),
+}
+def PbCl2_acetone():
+	#g09.job('PbCl2_4acetone', 'HSEH1PBE/Def2SVP Opt', atoms=files.read_xyz('out.xyz'), queue=None, force=True)
+	acet = utils.Molecule('cml/acetone')
+	pbcl2 = utils.Molecule('cml/PbCl2', extra_parameters=extra)
+	system = utils.System()
+	system.add(pbcl2)
+	for i in range(4): system.add(acet)
+	files.write_cml(system.atoms, system.bonds)
+
+PbCl2_acetone()
 

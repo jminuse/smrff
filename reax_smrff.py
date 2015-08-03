@@ -11,20 +11,23 @@ def calculate_error(dataset):
 		commands = ('''clear
 units real
 atom_style full
-pair_style reax/c NULL
+pair_style hybrid lj/cut/coul/cut 100.0 reax/c NULL
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
 
 boundary f f f
-read_data	'''+systems[0].name+'''.data
+read_data	'''+dataset.systems[0].name+'''.data
+
+'''+('\n'.join(['pair_coeff %d %d lj/cut/coul/cut %f %f' % (t1.lammps_type, t2.lammps_type, (t1.vdw_e*t2.vdw_e)**0.5, (t1.vdw_r*t2.vdw_r)**0.5) for t1 in systems[0].atom_types for t2 in systems[0].atom_types if t1.lammps_type<=t2.lammps_type and (t1.lammps_type,t2.lammps_type) not in [(1,1),(1,2),(2,2)] ]))+'''
 
 neigh_modify every 1 delay 0 check no
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
 thermo_style custom pe c_test_pe
-pair_coeff * * '''+dataset.name+'''.reax Pb Cl
-fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
+pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(systems[0].atom_types)-2))+'''
+group qeq_atoms type 1 2
+fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		for line in commands:
 			dataset.lmp.command(line)
@@ -40,7 +43,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
 			lammps_forces = dataset.lmp.extract_atom('f',3)
 			for i,a in enumerate(s.atoms):
-				a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
+				a.lfx, a.lfy, a.lfz = 0,0,0#lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
 	
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
@@ -183,8 +186,8 @@ def run(run_name, other_run_names=[],restart=False):
 	Cl = 838
 
 	extra = {
-		Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.0, vdw_r=3.0),
-		Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.0, vdw_r=3.0),
+		Pb: utils.Struct(index=Pb, index2=Pb_, element_name='Pb', element=82, mass=207.2, charge=0.0, vdw_e=0.1, vdw_r=3.5),
+		Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.1, vdw_r=3.5),
 	}
 
 	dataset = utils.Struct(name=run_name, systems=[])
@@ -198,32 +201,37 @@ def run(run_name, other_run_names=[],restart=False):
 	#random.seed(10)
 	#random.shuffle(filenames)
 	for name in filenames:
-				if not name.startswith('PbCl2'): continue
-				if not name.endswith('_vac'): continue
-				result = g09.parse_atoms(name, check_convergence=True)
-				if not result: continue #don't use the log file if not converged
-				energy, atoms = result
-				#if len(atoms)!=3: continue
-				if any( [a!=b and utils.dist(a,b)<2.0 for a in atoms for b in atoms] ): continue
-				system = utils.System(box_size=[40, 40, 40], name=name)
-				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
-				system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
-				system.element_string = ' '.join( [a.element for a in total.atoms] )
-				element_string_2 = ' '.join( [a.element for a in atoms] )
-				if element_string_2 != system.element_string:
-					print 'Inconsistent elements in cml vs log:', name
-					continue
-				print 'Read', system.element_string, 'from', name
-				for i,a in enumerate(total.atoms):
-					b = atoms[i]
-					if a.element != b.element:
-						print 'Inconsistent elements in cml vs log:', name
-						exit()
-					a.element=b.element
-					a.x, a.y, a.z = b.x, b.y, b.z
-					a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
-				system.add(total)
-				dataset.systems.append(system)
+		if not name.startswith('PbCl2'): continue
+		if not name.endswith('acetone'): continue
+		print name, 'opening atoms'
+		result = g09.parse_atoms(name, check_convergence=False) #not checking convergence now - only temporary for debugging!
+		if not result: continue #don't use the log file if not converged
+		energy, atoms = result
+		for a in atoms:
+			if a.element[0].isdigit():
+				a.element = utils.elements_by_atomic_number[int(a.element)]
+		#if len(atoms)!=3: continue
+		#if any( [a!=b and utils.dist(a,b)<2.0 for a in atoms for b in atoms] ): continue
+		system = utils.System(box_size=[40, 40, 40], name=name)
+		total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
+		system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
+		system.element_string = ' '.join( [a.element for a in total.atoms] )
+		element_string_2 = ' '.join( [a.element for a in atoms] )
+		if element_string_2 != system.element_string:
+			print 'Inconsistent elements in cml vs log:', name
+			print '\t'+element_string, element_string_2
+			continue
+		print 'Read', system.element_string, 'from', name
+		for i,a in enumerate(total.atoms):
+			b = atoms[i]
+			if a.element != b.element:
+				print 'Inconsistent elements in cml vs log:', name
+				exit()
+			a.element=b.element
+			a.x, a.y, a.z = b.x, b.y, b.z
+			a.fx, a.fy, a.fz = [f*1185.8113 for f in (b.fx, b.fy, b.fz)] # convert forces from Hartree/Bohr to kcal/mol / Angstrom
+		system.add(total)
+		dataset.systems.append(system)
 	#group systems by .element_string
 	dataset.by_elements = {}
 	for system in dataset.systems:
@@ -237,10 +245,10 @@ def run(run_name, other_run_names=[],restart=False):
 		for s in systems:
 			s.energy -= baseline_energy #baseline energy = 0.0
 
-	if True: #hide screen
+	if False: #hide screen
 		dataset.lmp = lammps('',['-log','none','-screen','none'])
 	else: #show screen
-		dataset.lmp = lammps('',['-log','none'])
+		dataset.lmp = lammps('',['-log',dataset.name+'.log'])
 	
 	os.chdir('lammps')
 	for s in dataset.systems:
@@ -251,7 +259,7 @@ def run(run_name, other_run_names=[],restart=False):
 		input_file='../input.reax'
 	commands = ('''units real
 atom_style full
-pair_style reax/c NULL
+pair_style hybrid lj/cut/coul/cut 100.0 reax/c NULL
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
@@ -259,15 +267,23 @@ dihedral_style opls
 boundary f f f
 read_data	'''+dataset.systems[0].name+'''.data
 
+'''+('\n'.join(['pair_coeff %d %d lj/cut/coul/cut %f %f' % (t1.lammps_type, t2.lammps_type, (t1.vdw_e*t2.vdw_e)**0.5, (t1.vdw_r*t2.vdw_r)**0.5) for t1 in systems[0].atom_types for t2 in systems[0].atom_types if t1.lammps_type<=t2.lammps_type and (t1.lammps_type,t2.lammps_type) not in [(1,1),(1,2),(2,2)] ]))+'''
+
 neigh_modify every 1 delay 0 check no
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
 thermo_style custom pe c_test_pe
-pair_coeff * * '''+input_file+''' Pb Cl
-fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
+pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(systems[0].atom_types)-2))+'''
+group qeq_atoms type 1 2
+fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 	for line in commands:
 		dataset.lmp.command(line)
+
+	dataset.lmp.command('dump 1 all xyz 1 '+dataset.systems[0].name+'.xyz')
+	dataset.lmp.command('minimize 0.0 1.0e-8 1000 100000')
+	print 'Finished, exit for debugging\n\t-James'
+	exit()
 
 	dataset.reax_params = read_reax_file(input_file)
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
