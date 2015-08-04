@@ -10,7 +10,8 @@ def calculate_error(dataset):
 	for elements,systems in dataset.by_elements.iteritems():
 		input_file=dataset.name+'.reax'
 	
-		[lmp.command(line) for line in ('''units real
+		[dataset.lmp.command(line) for line in ('''clear
+units real
 atom_style full
 pair_style hybrid lj/cut/coul/dsf 0.5 10.0 10.0 reax/c NULL
 bond_style harmonic
@@ -18,10 +19,10 @@ angle_style harmonic
 dihedral_style opls
 
 boundary p p p
-read_data	'''+run_name+'''.data''').splitlines()]
+read_data	'''+systems[0].name+'''.data''').splitlines()]
 
-		for t1 in system.atom_types:
-			for t2 in system.atom_types:
+		for t1 in systems[0].atom_types:
+			for t2 in systems[0].atom_types:
 				if t1.lammps_type<=t2.lammps_type and (t1.lammps_type,t2.lammps_type) not in [(1,1),(1,2),(2,2)]:
 					vdw_e = (t1.vdw_e*t2.vdw_e)**0.5
 					vdw_r = (t1.vdw_r*t2.vdw_r)**0.5
@@ -31,31 +32,12 @@ read_data	'''+run_name+'''.data''').splitlines()]
 						if t.types==(t1,t2):
 							vdw_e, vdw_r = t.vdw_e, t.vdw_r
 					
-					lmp.command('pair_coeff %d %d lj/cut/coul/dsf %f %f' % (t1.lammps_type, t2.lammps_type, vdw_e, vdw_r))
+					dataset.lmp.command('pair_coeff %d %d lj/cut/coul/dsf %f %f' % (t1.lammps_type, t2.lammps_type, vdw_e, vdw_r))
 	
-		[lmp.command(line) for line in ('''
-pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(system.atom_types)-2))+'''
+		[dataset.lmp.command(line) for line in ('''
+pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(systems[0].atom_types)-2))+'''
 group qeq_atoms type 1 2
 fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()]
-
-		commands = ('''dump 1 all xyz 100 '''+run_name+'''.xyz
-thermo 100
-
-fix av all ave/time 1 100 100 c_thermo_pe
-
-thermo_style custom step temp f_av density tpcpu
-minimize 0.0 1.0e-8 1000 100000
-velocity all create 300.0 1337 rot yes dist gaussian
-#fix motion all npt temp 300.0 300.0 100.0 aniso 1.0 1.0 1000.0
-fix motion all nvt temp 300.0 300.0 100.0
-timestep 2.0
-run 10000
-write_restart '''+run_name+'''.restart''').splitlines()
-
-		for line in commands:
-			lmp.command(line)
-		
-		
 		
 		
 		for s in systems:
@@ -253,10 +235,10 @@ fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	for line in commands:
 		dataset.lmp.command(line)
 
-	dataset.lmp.command('dump 1 all xyz 1 '+dataset.systems[0].name+'.xyz')
-	dataset.lmp.command('minimize 0.0 1.0e-8 1000 100000')
-	print 'Finished, exit for debugging\n\t-James'
-	exit()
+	#dataset.lmp.command('dump 1 all xyz 1 '+dataset.systems[0].name+'.xyz')
+	#dataset.lmp.command('minimize 0.0 1.0e-8 1000 100000')
+	#print 'Finished, exit for debugging\n\t-James'
+	#exit()
 
 	dataset.reax_params = read_reax_file(input_file)
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
