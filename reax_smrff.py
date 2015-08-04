@@ -8,29 +8,55 @@ def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
 	
 	for elements,systems in dataset.by_elements.iteritems():
-		commands = ('''clear
-units real
+		input_file=dataset.name+'.reax'
+	
+		[lmp.command(line) for line in ('''units real
 atom_style full
-pair_style hybrid lj/cut/coul/cut 100.0 reax/c NULL
+pair_style hybrid lj/cut/coul/dsf 0.5 10.0 10.0 reax/c NULL
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
 
-boundary f f f
-read_data	'''+dataset.systems[0].name+'''.data
+boundary p p p
+read_data	'''+run_name+'''.data''').splitlines()]
 
-'''+('\n'.join(['pair_coeff %d %d lj/cut/coul/cut %f %f' % (t1.lammps_type, t2.lammps_type, (t1.vdw_e*t2.vdw_e)**0.5, (t1.vdw_r*t2.vdw_r)**0.5) for t1 in systems[0].atom_types for t2 in systems[0].atom_types if t1.lammps_type<=t2.lammps_type and (t1.lammps_type,t2.lammps_type) not in [(1,1),(1,2),(2,2)] ]))+'''
-
-neigh_modify every 1 delay 0 check no
-compute atom_pe all pe/atom
-compute		test_pe all reduce sum c_atom_pe
-thermo_style custom pe c_test_pe
-pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(systems[0].atom_types)-2))+'''
+		for t1 in system.atom_types:
+			for t2 in system.atom_types:
+				if t1.lammps_type<=t2.lammps_type and (t1.lammps_type,t2.lammps_type) not in [(1,1),(1,2),(2,2)]:
+					vdw_e = (t1.vdw_e*t2.vdw_e)**0.5
+					vdw_r = (t1.vdw_r*t2.vdw_r)**0.5
+					pair_elements = [utils.elements_by_atomic_number[i] for i in sorted([t1.element,t2.element])]
+					
+					for t in dataset.vdw_pairs:
+						if t.types==(t1,t2):
+							vdw_e, vdw_r = t.vdw_e, t.vdw_r
+					
+					lmp.command('pair_coeff %d %d lj/cut/coul/dsf %f %f' % (t1.lammps_type, t2.lammps_type, vdw_e, vdw_r))
+	
+		[lmp.command(line) for line in ('''
+pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(system.atom_types)-2))+'''
 group qeq_atoms type 1 2
-fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
+fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()]
+
+		commands = ('''dump 1 all xyz 100 '''+run_name+'''.xyz
+thermo 100
+
+fix av all ave/time 1 100 100 c_thermo_pe
+
+thermo_style custom step temp f_av density tpcpu
+minimize 0.0 1.0e-8 1000 100000
+velocity all create 300.0 1337 rot yes dist gaussian
+#fix motion all npt temp 300.0 300.0 100.0 aniso 1.0 1.0 1000.0
+fix motion all nvt temp 300.0 300.0 100.0
+timestep 2.0
+run 10000
+write_restart '''+run_name+'''.restart''').splitlines()
 
 		for line in commands:
-			dataset.lmp.command(line)
+			lmp.command(line)
+		
+		
+		
 		
 		for s in systems:
 			for i,a in enumerate(s.atoms):
@@ -122,7 +148,6 @@ def unpack_params(params, dataset):
 	for t in dataset.vdw_pairs:
 		t.vdw_e, t.vdw_r = params[p:p+2]
 		p+=2
-	
 
 def run(run_name, other_run_names=[],restart=False):
 	Cl_ = 66
@@ -235,6 +260,20 @@ fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 	dataset.reax_params = read_reax_file(input_file)
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
+
+	dataset.vdw_pairs = []
+	for t1 in dataset.systems[0].atom_types:
+		for t2 in dataset.systems[0].atom_types:
+			if t1.lammps_type<=t2.lammps_type and (t1.lammps_type,t2.lammps_type):
+				pair_elements = [utils.elements_by_atomic_number[i] for i in sorted([t1.element,t2.element])]
+				if pair_elements==['O','Pb']:
+					vdw_e = 10.0
+					vdw_r = 2.7
+					dataset.vdw_pairs.append( utils.Struct(vdw_e=vdw_e, vdw_r=vdw_r, types=(t1,t2)) )
+				if pair_elements==['O','Cl']:
+					vdw_e = 0.01
+					vdw_r = 4.5
+					dataset.vdw_pairs.append( utils.Struct(vdw_e=vdw_e, vdw_r=vdw_r, types=(t1,t2)) )
 
 	def calculate_error_from_list(params):
 		unpack_params(params, dataset)
