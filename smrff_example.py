@@ -18,14 +18,17 @@ def run(run_name):
 		Cl: utils.Struct(index=Cl, index2=Cl_, element_name='Cl', element=17, mass=35.45, charge=-0.0, vdw_e=0.1, vdw_r=3.5),
 	}
 
-	system = utils.System(box_size=(20, 20, 20), name=run_name)
+	system = utils.System(box_size=(30, 30, 30), name=run_name)
 	
 	acet = utils.Molecule('cml/acetone')
+	dmf = utils.Molecule('cml/DMF')
+	mai = utils.Molecule('cml/MAI')
 	pbcl2 = utils.Molecule('cml/PbCl2', extra_parameters=extra)
-	#files.packmol(system, (pbcl2, acet), (1,10), 1.5)
-	
-	files.packmol(system, (acet, acet), (1,10), 0.3)
-	system.add(pbcl2)
+	pure_densities = (5.85, 0.944, 0.944)
+	ratio = (1,1,10)
+	density = sum([d*r for d,r in zip(pure_densities,ratio)])/sum(ratio)
+	print 'Estimated density =', density
+	files.packmol(system, (pbcl2, mai, dmf), ratio, density)
 	
 	if False: #hide screen
 		lmp = lammps('',['-log','none','-screen','none'])
@@ -71,10 +74,17 @@ fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()]
 
 	commands = ('''dump 1 all xyz 100 '''+run_name+'''.xyz
 thermo 100
+
+fix av all ave/time 1 100 100 c_thermo_pe
+
+thermo_style custom step temp f_av density tpcpu
 minimize 0.0 1.0e-8 1000 100000
 velocity all create 300.0 1337 rot yes dist gaussian
-fix motion all npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000.0
-run 1000''').splitlines()
+#fix motion all npt temp 300.0 300.0 100.0 aniso 1.0 1.0 1000.0
+fix motion all nvt temp 300.0 300.0 100.0
+timestep 2.0
+run 10000
+write_restart '''+run_name+'''.restart''').splitlines()
 
 	for line in commands:
 		lmp.command(line)

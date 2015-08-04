@@ -106,40 +106,10 @@ fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 def pack_params(dataset):
 	params, names = [], []
-	
-	for atom,include in zip(dataset.reax_params.atom_types, dataset.reax_includes.atom_types):
-		names_list = dataset.reax_params.atom_types_names
-		atom_name = atom[0][0]
-		for line in range(4):
-			for i,b in enumerate(include[line]):
-				if b and type(b)!=str:
-					params.append(atom[line][i])
-					names.append(atom_name + '.' + names_list[line][i])
 
-	for bond,include in zip(dataset.reax_params.bonds, dataset.reax_includes.bonds):
-		names_list = dataset.reax_params.bond_types_names
-		bondname='tbp(' + bond[0][0] + ',' + bond[0][1] + ').'
-		for line in range(2):
-			for i,b in enumerate(include[line]):
-				if b and type(b)!=str:
-					params.append(bond[line][i])
-					names.append(bondname+names_list[line][i])
-	
-	for offdiag,include in zip(dataset.reax_params.offdiags, dataset.reax_includes.offdiags):
-		names_list=dataset.reax_params.offdiags_names
-		offdname='offd('+offdiag[0]+','+offdiag[1]+').'
-		for i,b in enumerate(include):
-			if b and type(b)!=str:
-				params.append(offdiag[i])
-				names.append(offdname+names_list[i])
-
-	for thbp,include in zip(dataset.reax_params.thbps,dataset.reax_includes.thbps):
-		names_list = dataset.reax_params.three_body_names
-		thbpname='thbp('+thbp[0] +',' + thbp[1]+',' + thbp[2]+').'
-		for i,b in enumerate(include):
-			if b and type(b)!=str:
-				params.append(thbp[i])
-				names.append(thbpname + names_list[i])
+	for t in dataset.vdw_pairs:
+		params += [t.vdw_e, t.vdw_r]
+		names += ['%d:vdw_e'%t.types[0].element, '%d:vdw_r'%t.types[0].element]
 
 	if len(params)!=len(names):
 		print 'There are %d parameters, but %d names!' % (len(params), len(names))
@@ -149,32 +119,10 @@ def pack_params(dataset):
 
 def unpack_params(params, dataset):
 	p = 0
+	for t in dataset.vdw_pairs:
+		t.vdw_e, t.vdw_r = params[p:p+2]
+		p+=2
 	
-	for atom,include in zip(dataset.reax_params.atom_types, dataset.reax_includes.atom_types):
-		for line in range(4):
-			for i,b in enumerate(include[line]):
-				if b and type(b)!=str:
-					atom[line][i] = params[p]
-					p += 1
-
-	for bond,include in zip(dataset.reax_params.bonds, dataset.reax_includes.bonds):
-		for line in range(2):
-			for i,b in enumerate(include[line]):
-				if b and type(b)!=str:
-					bond[line][i] = params[p]
-					p += 1
-
-	for offdiag,include in zip(dataset.reax_params.offdiags, dataset.reax_includes.offdiags):
-		for i,b in enumerate(include):
-			if b and type(b)!=str:
-				offdiag[i] = params[p]
-				p += 1
-
-	for thbp,include in zip(dataset.reax_params.thbps,dataset.reax_includes.thbps):
-		for i,b in enumerate(include):
-			if b and type(b)!=str:
-				thbp[i] = params[p]
-				p += 1
 
 def run(run_name, other_run_names=[],restart=False):
 	Cl_ = 66
