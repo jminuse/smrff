@@ -248,13 +248,14 @@ def run(run_name, other_run_names=[],restart=False):
 	if restart:
 		best_error = 1e10
 		best_run = run_name
+		input_file='../input.reax'
 		for name in [run_name]+other_run_names:
 			if os.path.isfile(name+'_best.reax'):
 				error = float(open(name+'_best.reax').readline().split()[1])
 				if error<best_error:
 					best_error = error
 					best_run = name
-		input_file=best_run+'_best.reax'
+					input_file=best_run+'_best.reax'
 	else:
 		input_file='../input.reax'
 	commands = ('''units real
@@ -461,5 +462,5 @@ def if_multiprocessing_does_not_work():
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
 
 #run('test')
-run_multiple('test2', 4)
+run_multiple('test3', 4)
 
