@@ -159,7 +159,7 @@ def PbCl2_acetone():
 	for i in range(4): system.add(acet)
 	files.write_cml(system.atoms, system.bonds)
 
-<<<<<<< HEAD
+
 def wiggle_PbCl2_acetone():
 	g09.job('PbCl2_4acetone_tzvp', 'HSEH1PBE/Def2TZVP Opt Guess=Read Geom=(Check,NewDefinition)', previous='PbCl2_4acetone', queue=None)
 	shutil.copyfile('gaussian/PbCl2_4acetone.cml', 'gaussian/PbCl2_4acetone_tzvp.cml')
