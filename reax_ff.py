@@ -60,9 +60,9 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			for i,a in enumerate(s.atoms):
 				fx, fy, fz = a.lfx, a.lfy, a.lfz
 				real_force_squared = a.fx**2 + a.fy**2 + a.fz**2
-				lammps_force_squared = fx**2 + fy**2 + fz**2
-				real_F.append(real_force_squared**0.5); test_F.append(lammps_force_squared**0.5)
 				try:
+					lammps_force_squared = fx**2 + fy**2 + fz**2
+					real_F.append(real_force_squared**0.5); test_F.append(lammps_force_squared**0.5)
 					relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
 					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
 				except OverflowError:
