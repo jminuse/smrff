@@ -159,6 +159,7 @@ def PbCl2_acetone():
 	for i in range(4): system.add(acet)
 	files.write_cml(system.atoms, system.bonds)
 
+<<<<<<< HEAD
 def wiggle_PbCl2_acetone():
 	g09.job('PbCl2_4acetone_tzvp', 'HSEH1PBE/Def2TZVP Opt Guess=Read Geom=(Check,NewDefinition)', previous='PbCl2_4acetone', queue=None)
 	shutil.copyfile('gaussian/PbCl2_4acetone.cml', 'gaussian/PbCl2_4acetone_tzvp.cml')
@@ -198,5 +199,28 @@ def cl2_pair():
 	for i in range(5,10):
 		Process(target=run_cl2_pair, args=(i,)).start()
 
-cl2_pair()
+def PbCl2_2():
+	atoms=files.read_xyz('gaussian/PbCl2_2.xyz')
+	g09.job('PbCl2t_2_def2SVP', 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue=None,force=True).wait()
+	shutil.copyfile('gaussian/PbCl2_2.cml', 'gaussian/PbCl2t_2_def2SVP.cml')
 
+
+
+
+def run_PbCl2_reax_min(i,atoms):
+	g09.job('PbCl2_reax_min_vac_%d' % i, 'HSEH1PBE/Def2TZVP Force Guess=Read', atoms, previous='PbCl2_opt_vac', queue='batch',force=True).wait()
+	shutil.copyfile('gaussian/PbCl2_reax_min.cml', 'gaussian/PbCl2_reax_min_vac_%d.cml' % i)
+
+def PbCl2_reax_min():
+	frames = files.read_xyz('lammps/testing.xyz')
+	#g09.job('PbI2_PbI2_def2SVP', 'HSEH1PBE/Def2SVP Opt SCRF(Solvent=Water)', frames[1], queue=None, force=True).wait()
+	shutil.copyfile('gaussian/PbCl2_rot80_vac.cml', 'gaussian/PbCl2_reax_min.cml')
+	for i,atoms in enumerate(frames[2:]):
+		procs = Process(target=run_PbCl2_reax_min, args=(i,atoms))
+		procs.start()
+		print 'Running %d' % i
+		# g09.job('PbCl2_reax_min_%d' % i, 'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)', atoms, queue='batch',force=True).wait()
+		# shutil.copyfile('gaussian/PbCl2_reax_min.cml', 'gaussian/PbCl2_reax_min_%d.cml' % i)
+
+
+PbCl2_reax_min()
