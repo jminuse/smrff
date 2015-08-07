@@ -18,7 +18,7 @@ bond_style harmonic
 angle_style harmonic
 dihedral_style opls
 
-boundary p p p
+boundary f f f
 read_data	'''+systems[0].name+'''.data''').splitlines()]
 
 		for t1 in systems[0].atom_types:
@@ -35,6 +35,11 @@ read_data	'''+systems[0].name+'''.data''').splitlines()]
 					dataset.lmp.command('pair_coeff %d %d lj/cut/coul/dsf %f %f' % (t1.lammps_type, t2.lammps_type, vdw_e, vdw_r))
 	
 		[dataset.lmp.command(line) for line in ('''
+neigh_modify every 1 delay 0 check no
+compute atom_pe all pe/atom
+compute		test_pe all reduce sum c_atom_pe
+thermo_style custom pe c_test_pe
+
 pair_coeff * * reax/c '''+input_file+''' Pb Cl'''+(' NULL'*(len(systems[0].atom_types)-2))+'''
 group qeq_atoms type 1 2
 fix 1 qeq_atoms qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()]

@@ -11,7 +11,7 @@ def calculate_error(dataset):
 		commands = ('''clear
 units real
 atom_style full
-pair_style reax/c NULL
+pair_style reax/c NULL mincap 10
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
@@ -69,7 +69,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 					return 1e10
 	
 	plot_forces = False
-	plot_energies = True
+	plot_energies = False
 	if plot_forces or plot_energies: #plot energies
 		import matplotlib.pyplot as plt
 		if plot_energies:
@@ -199,7 +199,7 @@ def run(run_name, other_run_names=[],restart=False):
 	#random.shuffle(filenames)
 	for name in filenames:
 				if not name.startswith('PbCl2'): continue
-				if not name.endswith('_vac'): continue
+				if not '_vac' in name: continue
 				result = g09.parse_atoms(name, check_convergence=True)
 				if not result: continue #don't use the log file if not converged
 				energy, atoms = result
@@ -211,9 +211,9 @@ def run(run_name, other_run_names=[],restart=False):
 				system.element_string = ' '.join( [a.element for a in total.atoms] )
 				element_string_2 = ' '.join( [a.element for a in atoms] )
 				if element_string_2 != system.element_string:
-					print 'Inconsistent elements in cml vs log:', name
+					#print 'Inconsistent elements in cml vs log:', name
 					continue
-				print 'Read', system.element_string, 'from', name
+				#print 'Read', system.element_string, 'from', name
 				for i,a in enumerate(total.atoms):
 					b = atoms[i]
 					if a.element != b.element:
@@ -245,13 +245,21 @@ def run(run_name, other_run_names=[],restart=False):
 	os.chdir('lammps')
 	for s in dataset.systems:
 		files.write_lammps_data(s)
-	if restart and os.path.isfile('lammps/'+run_name+'_best.reax'):
-		input_file=run_name+'_best.reax'
+	if restart:
+		best_error = 1e10
+		best_run = run_name
+		for name in [run_name]+other_run_names:
+			if os.path.isfile(name+'_best.reax'):
+				error = float(open(name+'_best.reax').readline().split()[1])
+				if error<best_error:
+					best_error = error
+					best_run = name
+		input_file=best_run+'_best.reax'
 	else:
 		input_file='../input.reax'
 	commands = ('''units real
 atom_style full
-pair_style reax/c NULL
+pair_style reax/c NULL mincap 10
 bond_style harmonic
 angle_style harmonic
 dihedral_style opls
@@ -287,10 +295,11 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				print names[i] + ' bounds were unacceptable, they have been changed to (.501,45).'
 				bounds[i][1]=(bounds[i][0],45)
 
-	print "Parametrization on:"
-	print '      Variable         Initial         Bounds'
-	for x,y,z in zip(names,initial_params,bounds):
-		print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
+	if False: #print params at start
+		print "Parametrization on:"
+		print '      Variable         Initial         Bounds'
+		for x,y,z in zip(names,initial_params,bounds):
+			print '%20s' % x, '%9.4f' % y, '(%8.4f,%8.4f)' % (z[0],z[1])
 
 	#get params from other, parallel runs
 	dataset.others = [utils.Struct(name=n) for n in other_run_names]
@@ -433,7 +442,7 @@ def run_multiple(jobname, N):
 	queue = Queue()
 	procs=[]
 	for i in range(N):
-		procs.append(Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i])))
+		procs.append(Process(target=run, args=(jobname+str(i), [jobname+str(other) for other in range(N) if other!=i],False)))
 		procs[-1].start()
 	while True:
 		for i,p in enumerate(procs):
@@ -451,6 +460,6 @@ def if_multiprocessing_does_not_work():
 		n_other_jobs = int(sys.argv[3])
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
 
-run('test')
-#run_multiple('test2', 8)
+#run('test')
+run_multiple('test2', 4)
 

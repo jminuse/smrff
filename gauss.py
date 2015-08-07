@@ -159,5 +159,44 @@ def PbCl2_acetone():
 	for i in range(4): system.add(acet)
 	files.write_cml(system.atoms, system.bonds)
 
-PbCl2_acetone()
+def wiggle_PbCl2_acetone():
+	g09.job('PbCl2_4acetone_tzvp', 'HSEH1PBE/Def2TZVP Opt Guess=Read Geom=(Check,NewDefinition)', previous='PbCl2_4acetone', queue=None)
+	shutil.copyfile('gaussian/PbCl2_4acetone.cml', 'gaussian/PbCl2_4acetone_tzvp.cml')
+	for i in range(20):
+		atoms = g09.atoms('PbCl2_4acetone')
+		for a in atoms:
+			if a.element != 'Pb':
+				a.x += 0.1*(2-random.random())
+				a.y += 0.1*(2-random.random())
+				a.z += 0.1*(2-random.random())
+		name = 'PbCl2_4acetone_w%d' % i
+		g09.job(name, 'HSEH1PBE/Def2TZVP Force Guess=Read', atoms, previous='PbCl2_4acetone', queue=None).wait()
+		shutil.copyfile('gaussian/PbCl2_4acetone.cml', 'gaussian/'+name+'.cml')
+
+def tzvp_blaire_vac():
+	for name in ['5_acetone_5', '5_acetone_5_PbCl2', 'pbi2_6methc_9', 'pbcl2_6methc_9', '4ACN_s_4', '4ACN_s_4_pbcl2', '5buty22111.2_2', '5buty22111.2_2_PbCl2']:
+		shutil.copyfile('/fs/home/bas348/perovskites/gaussian/'+name+'.chk', 'gaussian/'+name+'.chk')
+		g09.job(name+'_svp', 'HSEH1PBE/Def2SVP Opt Guess=Read Geom=(Check,NewDefinition)', previous=name, queue='batch')
+
+'''
+Running:
+['5_acetone_5', '5_acetone_5_PbCl2', 'pbi2_6methc_9', 'pbcl2_6methc_9', '4ACN_s_4', '4ACN_s_4_pbcl2', '5buty22111.2_2', '5buty22111.2_2_PbCl2']+'svp'
+PbCl2_4acetone_tzvp
+Done:
+PbCl2_4acetone_w%d' % range(10)
+'''
+
+from multiprocessing import Process
+
+def run_cl2_pair(i):
+	frame = files.read_xyz('pbcl2.xyz')
+	frame[0].y -= i*0.4
+	name = 'PbCl2_c_%d_vac' % i
+	g09.job(name, 'HSEH1PBE/Def2TZVP Force SCF=(IntRep,QC)', frame, queue=None, force=True)
+
+def cl2_pair():
+	for i in range(5,10):
+		Process(target=run_cl2_pair, args=(i,)).start()
+
+cl2_pair()
 
