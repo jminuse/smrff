@@ -288,7 +288,8 @@ def write_reax_file(dataset, best=False,error=None):
 		error_string='Error: ' + str(error) + '  '
 	else:
 		error_string=''
-	f.write(error_string+rp.first_line_comment)
+	f.write(error_string+' Reactive MD_force field') 
+	# Too long of a first line results in errors (ex: WARNING: number of globals in ffield file is 0!)
 	
 	# Print General Parameters:
 	f.write(' ' + str(rp.number_of_gen_params) + '       ! ' + 'Number of general parameters  \n')
