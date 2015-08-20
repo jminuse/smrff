@@ -6,7 +6,6 @@ from reax_utils import *
 
 def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
-	# samediff=[0,0]
 	for elements,systems in dataset.by_elements.iteritems():
 		commands = ('''clear
 units real
@@ -40,29 +39,10 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			
 			lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 			s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
-			# forces_compute = dataset.lmp.extract_compute('atom_f',1,0)
-			# lammps2_forces = dataset.lmp.extract_atom('f',3)
-			# lf=[]
-			# for i,a in enumerate(s.atoms):
-			# 	lf+=[float(lammps2_forces[i][0]),float(lammps2_forces[i][1]),float(lammps2_forces[i][2])]
 			lammps_forces = dataset.lmp.gather_atoms('f',1,3)
-			# if lf==lammps_forces:
-				# print 'same'
-			# 	samediff[0]+=1
-			# else:
-				# print 'DIFF'
-				# samediff[1]+=1
-				# xs =[]
-				# for i in range(len(lf)/3):
-				# 	xs+=[int(zip(lf,lammps_forces)[i*3][0]),int(zip(lf,lammps_forces)[i*3][1])]
-				# print xs
-			# print lammps2_forces[0], lammps2_forces[1], lammps2_forces[2], lammps2_forces[3], lammps2_forces[4], lammps2_forces[5], lammps2_forces[6], lammps2_forces[7], lammps2_forces[8]
 			for i,a in enumerate(s.atoms):
 				a.lfx, a.lfy, a.lfz = lammps_forces[(i*3)+0], lammps_forces[(i*3)+1], lammps_forces[(i*3)+2]
-				# print a.lfx, a.lfy, a.lfz
-			# print lammps2_forces
-			# exit()
-	# print samediff
+
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	relative_force_error, absolute_force_error = 0.0, 0.0
@@ -266,7 +246,7 @@ def run(run_name, other_run_names=[],restart=False):
 		files.write_lammps_data(s)
 
 	default_input='../input.reax'
-	
+
 	if restart:
 		best_error = 1e10
 		best_run = run_name
