@@ -6,7 +6,7 @@ from reax_utils import *
 
 def calculate_error(dataset):
 	write_reax_file(dataset) #all LAMMPS job use same reax file and same data files
-	
+	# samediff=[0,0]
 	for elements,systems in dataset.by_elements.iteritems():
 		commands = ('''clear
 units real
@@ -22,6 +22,8 @@ read_data	'''+systems[0].name+'''.data
 neigh_modify every 1 delay 0 check no
 compute atom_pe all pe/atom
 compute		test_pe all reduce sum c_atom_pe
+#compute atom_f all property/atom fx fy fz
+#variable b equal c_atom_f[1][1]
 thermo_style custom pe c_test_pe
 pair_coeff * * '''+dataset.name+'''.reax Pb Cl
 fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
@@ -38,10 +40,29 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			
 			lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 			s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
-			lammps_forces = dataset.lmp.extract_atom('f',3)
+			# forces_compute = dataset.lmp.extract_compute('atom_f',1,0)
+			# lammps2_forces = dataset.lmp.extract_atom('f',3)
+			# lf=[]
+			# for i,a in enumerate(s.atoms):
+			# 	lf+=[float(lammps2_forces[i][0]),float(lammps2_forces[i][1]),float(lammps2_forces[i][2])]
+			lammps_forces = dataset.lmp.gather_atoms('f',1,3)
+			# if lf==lammps_forces:
+				# print 'same'
+			# 	samediff[0]+=1
+			# else:
+				# print 'DIFF'
+				# samediff[1]+=1
+				# xs =[]
+				# for i in range(len(lf)/3):
+				# 	xs+=[int(zip(lf,lammps_forces)[i*3][0]),int(zip(lf,lammps_forces)[i*3][1])]
+				# print xs
+			# print lammps2_forces[0], lammps2_forces[1], lammps2_forces[2], lammps2_forces[3], lammps2_forces[4], lammps2_forces[5], lammps2_forces[6], lammps2_forces[7], lammps2_forces[8]
 			for i,a in enumerate(s.atoms):
-				a.lfx, a.lfy, a.lfz = lammps_forces[i][0], lammps_forces[i][1], lammps_forces[i][2]
-	
+				a.lfx, a.lfy, a.lfz = lammps_forces[(i*3)+0], lammps_forces[(i*3)+1], lammps_forces[(i*3)+2]
+				# print a.lfx, a.lfy, a.lfz
+			# print lammps2_forces
+			# exit()
+	# print samediff
 	#calculate energy error
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	relative_force_error, absolute_force_error = 0.0, 0.0
@@ -94,7 +115,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	relative_energy_error = math.sqrt( relative_energy_error/len(dataset.systems) )
 	absolute_energy_error = math.sqrt( absolute_energy_error/len(dataset.systems) )
 
-	error = relative_energy_error# + relative_force_error
+	error = relative_energy_error + relative_force_error
 	
 	if math.isnan(error):
 		return 1e10
@@ -194,9 +215,7 @@ def run(run_name, other_run_names=[],restart=False):
 			if ff.endswith('.log'):
 				name = ff[:-4]
 				filenames.append(name)
-	#filenames = filenames[::4]
-	#random.seed(10)
-	#random.shuffle(filenames)
+
 	for name in filenames:
 				if not name.startswith('PbCl2'): continue
 				if not '_vac' in name: continue
@@ -245,10 +264,13 @@ def run(run_name, other_run_names=[],restart=False):
 	os.chdir('lammps')
 	for s in dataset.systems:
 		files.write_lammps_data(s)
+
+	default_input='../input.reax'
+	
 	if restart:
 		best_error = 1e10
 		best_run = run_name
-		input_file='../input.reax'
+		input_file=default_input
 		for name in [run_name]+other_run_names:
 			if os.path.isfile(name+'_best.reax'):
 				error = float(open(name+'_best.reax').readline().split()[1])
@@ -257,7 +279,7 @@ def run(run_name, other_run_names=[],restart=False):
 					best_run = name
 					input_file=best_run+'_best.reax'
 	else:
-		input_file='../input.reax'
+		input_file=default_input
 	commands = ('''units real
 atom_style full
 pair_style reax/c NULL mincap 10
@@ -317,6 +339,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	check_others(dataset)
 
 	def parameter_effect(initial_params=initial_params):
+		print "Testing whether included parameters have an apparent effect"
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
 		for i,p in enumerate(initial_params):
 			# print 'Testing '+ names[i]
@@ -339,12 +362,12 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 		raise SystemExit # Exit once all parameters are tested
 
 	def stochastic(use_gradient=True):
+		# parameter_effect(initial_params)
 		if use_gradient:
 			import numpy
 			from scipy.optimize import minimize, fmin_l_bfgs_b
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-		print dataset.name, 'starting error: %.4g' % best_min.fun
-		# parameter_effect(initial_params)
+		print dataset.name, ('starting error: %.4g from ' % best_min.fun ) + input_file
 		# raise SystemExit #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
@@ -461,6 +484,6 @@ def if_multiprocessing_does_not_work():
 		n_other_jobs = int(sys.argv[3])
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
 
-#run('test')
-run_multiple('test3', 4)
+# run('test')
+run_multiple('test', 4)
 
