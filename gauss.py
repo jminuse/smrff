@@ -223,4 +223,99 @@ def PbCl2_reax_min():
 		# shutil.copyfile('gaussian/PbCl2_reax_min.cml', 'gaussian/PbCl2_reax_min_%d.cml' % i)
 
 
-PbCl2_reax_min()
+def run_PbCl2_2_new_vac(i,atoms):
+	shutil.copyfile('gaussian/PbCl2_2_opt_vac.cml','gaussian/PbCl2_new_%d_vac.cml'%i)
+	g09.job('PbCl2_2_new_%d_vac'%i, 'HSEH1PBE/Def2TZVP Force Guess=Read',atoms, previous='PbCl2_2_opt_vac', queue='Batch',force=True).wait()
+
+def PbCl2_2_new_vac():
+	for i in range(30):
+		atoms=files.read_xyz('gaussian/PbCl2_2_new_vac.xyz')
+		xs=random.random();ys=random.random();zs=random.random();rand=random.random()
+		for a in atoms[:3]:
+			if rand<.33:
+				a.x+=xs
+				a.y+=ys
+				a.z+=zs
+			elif rand < .66:
+				a.x-=xs
+				a.y+=ys
+				a.z+=zs
+			else:
+				a.x-=xs
+				a.y-=ys
+				a.z+=zs
+		procs = Process(target=run_PbCl2_2_new_vac, args=(i,atoms))
+		procs.start()
+		# run_PbCl2_2_new_vac(i,atoms)
+		# shutil.copyfile('gaussian/PbCl2_2_opt_vac.cml','gaussian/PbCl2_new_%d_vac.cml'%i)
+		# g09.job('PbCl2_2_new_%d_vac'%i, 'HSEH1PBE/Def2TZVP Force Guess=Read',atoms, previous='PbCl2_2_opt_vac', queue='Batch',force=True).wait()
+
+
+# shutil.copyfile('gaussian/PbCl2_2_new_opt_vac.cml','gaussian/PbCl2_new0_opt_vac.cml')
+# g09.job('PbCl2_2_new0_opt_vac', 'HSEH1PBE/Def2TZVP Opt Guess=Read Geom=Check', previous='PbCl2_2_new_opt_vac', queue='Batch',force=True).wait()
+def run_PbCl2_2_new_bad_vac(i,atoms):
+	shutil.copyfile('gaussian/PbCl2_2_opt_vac.cml','gaussian/PbCl2_2_new_bad%d_vac.cml'%i)
+	g09.job('PbCl2_2_new_bad%d_vac'%i, 'HSEH1PBE/Def2TZVP Force Guess=Read',atoms, previous='PbCl2_2_opt_vac', queue='Batch',force=True).wait()
+def PbCl2_2_new_bad_vac():
+	for i in range(20):
+		name = 'PbCl2_2_new_bad%d_vac' % i
+		print 'Reading ' + name
+		atoms=files.read_xyz('gaussian/'+name+'.xyz' )
+		procs = Process(target=run_PbCl2_2_new_bad_vac, args=(i,atoms))
+		procs.start()
+
+def lead_chloride_crystal():
+	frames = files.read_xyz('xyz/leadChloride.xyz')
+	g09.job()
+
+
+def read_PbCl_jobs(name):
+	energy, atoms, time = g09.parse_atoms(name,parse_all = True)
+	frames = [(e,f) for e,f in zip(energy,atoms)]
+	frames.sort()
+	return frames
+
+
+def run_PbCl_24_def2svp(runname,atoms):
+	g09.job(runname,'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)',atoms,queue='batch').wait()
+
+def PbCl_24_svp_3():
+	frames = read_PbCl_jobs('PbCl_24_svp_3')
+	frames = [frames[i] for i in range(0,len(frames),6)]
+	for i,frame in enumerate(frames):
+		runname = 'PbCl_24_def2svp_%d' % i
+		procs=Process(target=run_PbCl_24_def2svp,args=(runname,frame[1]))
+		procs.start()
+		print 'Running ' + runname
+
+def run_PbCl_24_vac(runname,atoms,prev):
+	print 'Running job: ' + runname
+	g09.job(runname, 'HSEH1PBE/Def2TZVP Force Guess=Read',atoms, previous=prev, queue='batch',force=True).wait()
+
+
+def PbCl_24_vac_3():
+	for root, dirs, file_list in os.walk("gaussian"):
+		for ff in file_list:
+			if ff.endswith('.log') and ff.startswith('PbCl_24_def2svp'):
+				old_job = ff[:-4]
+				runname = old_job.replace('def2svp', 'vac')
+				e, atoms = g09.parse_atoms(old_job)
+				if os.path.exists('gaussian/%s.log' % runname):
+					print runname + 'ALREADY EXISTS, SKIPPING'
+					continue
+				procs=Process(target=run_PbCl_24_vac,args=(runname,atoms,old_job))
+				procs.start()
+
+# PbCl_24_vac_3()
+def PbCl_24_vac_3_cml():
+	for root, dirs, file_list in os.walk("gaussian"):
+		for ff in file_list:
+			if ff.endswith('.log') and ff.startswith('PbCl_24_vac'):
+				name = ff[:-4]
+				e, atoms = g09.parse_atoms(name)
+				if os.path.exists('gaussian/%s.cml' % name):
+					print name +'.cml ALREADY EXISTS, SKIPPING'
+					continue
+				files.write_cml(atoms,[],name=name)
+
+PbCl_24_vac_3_cml()

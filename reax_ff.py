@@ -29,7 +29,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		for line in commands:
 			dataset.lmp.command(line)
-		
+			
 		for s in systems:
 			for i,a in enumerate(s.atoms):
 				dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
@@ -39,7 +39,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			
 			lammps_energies_by_atom = dataset.lmp.extract_compute('atom_pe',1,1) #http://lammps.sandia.gov/doc/Section_python.html
 			s.lammps_energy = sum( [lammps_energies_by_atom[i] for i in range(0,len(s.atoms)) ] )
-			lammps_forces = dataset.lmp.gather_atoms('f',1,3)
+			lammps_forces = dataset.lmp.gather_atoms('f',1,3) # "Gather_atoms() orders the atoms by atom ID while extract_atom() does not." -- http://lammps.sandia.gov/doc/Section_python.html
 			for i,a in enumerate(s.atoms):
 				a.lfx, a.lfy, a.lfz = lammps_forces[(i*3)+0], lammps_forces[(i*3)+1], lammps_forces[(i*3)+2]
 
@@ -49,6 +49,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	real_E,test_E,real_F,test_F = [],[],[],[]
 	for elements,systems in dataset.by_elements.iteritems():
 		baseline_energy = systems[0].lammps_energy #should be in order of increasing energy
+		# print 'Baseline from: ' + systems[0].name
 		for s in systems:
 			s.lammps_energy -= baseline_energy
 			try:
@@ -195,16 +196,20 @@ def run(run_name, other_run_names=[],restart=False):
 			if ff.endswith('.log'):
 				name = ff[:-4]
 				filenames.append(name)
-
 	for name in filenames:
-				if not name.startswith('PbCl2'): continue
+				if not (name.startswith('PbCl2') or name.startswith('PbCl_24')): continue
 				if not '_vac' in name: continue
+				if '_new_' in name : continue
+				if 'bad' in name : continue
+				# if not '_c_' in name and  not name.startswith('PbCl2_reax_min_vac_27'): continue
+				if name.startswith('PbCl2t'): continue
 				result = g09.parse_atoms(name, check_convergence=True)
 				if not result: continue #don't use the log file if not converged
 				energy, atoms = result
 				#if len(atoms)!=3: continue
 				if any( [a!=b and utils.dist(a,b)<2.0 for a in atoms for b in atoms] ): continue
 				system = utils.System(box_size=[40, 40, 40], name=name)
+				# print name
 				total = utils.Molecule('gaussian/'+name, extra_parameters=extra, check_charges=False)
 				system.energy = energy*627.509 #convert energy from Hartree to kcal/mol
 				system.element_string = ' '.join( [a.element for a in total.atoms] )
@@ -246,6 +251,8 @@ def run(run_name, other_run_names=[],restart=False):
 		files.write_lammps_data(s)
 
 	default_input='../input.reax'
+	# default_input='testf0_best.reax'
+
 
 	if restart:
 		best_error = 1e10
@@ -282,6 +289,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 	dataset.reax_params = read_reax_file(input_file)
 	dataset.reax_includes, bounds = read_reax_include_file('../include.reax',dataset.reax_params)
+	# dataset.reax_includes, bounds = read_reax_include_file('../includeCl.reax',dataset.reax_params)
 
 	def calculate_error_from_list(params):
 		unpack_params(params, dataset)
@@ -347,7 +355,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			import numpy
 			from scipy.optimize import minimize, fmin_l_bfgs_b
 		best_min = utils.Struct(fun=calculate_error_from_list(initial_params),x=initial_params)
-		print dataset.name, ('starting error: %.4g from ' % best_min.fun ) + input_file
+		print dataset.name, ('starting error: %f from ' % best_min.fun ) + input_file
 		# raise SystemExit #just print starting error
 		def new_param_guess(start, gauss=True):
 			dataset.how_long_since_checked_others += 1
@@ -438,7 +446,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		return best_min
 
-	stochastic(True)
+	stochastic(False)
 
 from multiprocessing import Process, Queue
 from time import sleep
@@ -464,6 +472,6 @@ def if_multiprocessing_does_not_work():
 		n_other_jobs = int(sys.argv[3])
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
 
-# run('test')
-run_multiple('test', 4)
+# run('testpo')
+run_multiple('forces_correction_24_included', 4)
 
