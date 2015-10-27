@@ -29,7 +29,7 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 
 		for line in commands:
 			dataset.lmp.command(line)
-			
+
 		for s in systems:
 			for i,a in enumerate(s.atoms):
 				dataset.lmp.command('set atom %d x %f y %f z %f' % (i+1, a.x, a.y, a.z) )
@@ -47,6 +47,14 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 	relative_energy_error, absolute_energy_error = 0.0, 0.0
 	relative_force_error, absolute_force_error = 0.0, 0.0
 	real_E,test_E,real_F,test_F = [],[],[],[]
+	real_system_F,test_system_F = [],[]
+	real_Pb_F,test_Pb_F = [],[]
+	real_Cl_F,test_Cl_F = [],[]
+	real_Pb_F_by_system,test_Pb_F_by_system = [],[]
+	real_Cl_F_by_system,test_Cl_F_by_system = [],[]
+	
+
+	
 	for elements,systems in dataset.by_elements.iteritems():
 		baseline_energy = systems[0].lammps_energy #should be in order of increasing energy
 		# print 'Baseline from: ' + systems[0].name
@@ -58,6 +66,9 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 			except OverflowError: return 1e10
 			#print s.name, s.energy, s.lammps_energy
 			real_E.append(s.energy); test_E.append(s.lammps_energy)
+			real_system_F.append(0); test_system_F.append(0);	
+			real_Pb_F_by_system.append(0); test_Pb_F_by_system.append(0);
+			real_Cl_F_by_system.append(0); test_Cl_F_by_system.append(0);
 
 			for i,a in enumerate(s.atoms):
 				fx, fy, fz = a.lfx, a.lfy, a.lfz
@@ -65,28 +76,122 @@ fix 1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c''').splitlines()
 				try:
 					lammps_force_squared = fx**2 + fy**2 + fz**2
 					real_F.append(real_force_squared**0.5); test_F.append(lammps_force_squared**0.5)
+					real_system_F[-1]+=real_force_squared; test_system_F[-1]+=lammps_force_squared;
 					relative_force_error += ((fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2) / (real_force_squared + 20.0**2)
 					absolute_force_error += (fx-a.fx)**2 + (fy-a.fy)**2 + (fz-a.fz)**2
+					if a.element == 'Pb':
+						real_Pb_F_by_system[-1]+=real_force_squared;
+						test_Pb_F_by_system[-1]+=lammps_force_squared;
+						real_Pb_F.append(real_force_squared);
+						test_Pb_F.append(lammps_force_squared);
+					elif a.element == 'Cl':
+						real_Cl_F_by_system[-1]+=real_force_squared;
+						test_Cl_F_by_system[-1]+=lammps_force_squared;
+						real_Cl_F.append(real_force_squared);
+						test_Cl_F.append(lammps_force_squared);
 				except OverflowError:
 					return 1e10
 	
-	plot_forces = False
-	plot_energies = False
+	plot_forces = True
+	plot_energies = True
 	if plot_forces or plot_energies: #plot energies
 		import matplotlib.pyplot as plt
 		if plot_energies:
+			plt.figure(1)
 			plt.plot(real_E, label='HSE06/TZVP energies')
 			plt.plot(test_E, label='REAX energies')
-			plt.xlabel('Runs (sorted by energy)')
+			plt.xlabel('Runs (sorted by energy)') 
 			plt.ylabel('Energy (kcal/mol)')
-		elif plot_forces:
-			real_F,test_F = [list(x) for x in zip(*sorted(zip(real_F,test_F)))] #sort forces
-			plt.plot(real_F, label='HSE06/TZVP forces')
-			plt.plot(test_F, label='REAX forces')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_energy_plot')
+		if plot_forces:
+			plt.figure(2)
+			real_F_sorted,test_F_sorted = [list(x) for x in zip(*sorted(zip(real_F,test_F)))] #sort forces
+			plt.plot(real_F_sorted, label='HSE06/TZVP forces')
+			plt.plot(test_F_sorted, label='REAX forces')
 			plt.xlabel('Atoms (sorted by force)')
 			plt.ylabel('Force (kcal/mol/Angstrom)')
-		plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
-		plt.title('%s REAX fit' % dataset.name)
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot')
+
+			plt.figure(3)
+			plt.plot(real_F, label='HSE06/TZVP forces')
+			plt.plot(test_F, label='REAX forces')
+			plt.xlabel('Atoms (not sorted by Force, sorted by system energy)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_2')
+
+			plt.figure(4)
+			plt.plot(real_system_F, label='HSE06/TZVP forces')
+			plt.plot(test_system_F, label='REAX forces')
+			plt.xlabel('Atoms (total system Force, sorted by system energy)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_3')
+
+
+			plt.figure(5)
+			plt.plot(real_Pb_F_by_system, label='HSE06/TZVP forces')
+			plt.plot(test_Pb_F_by_system, label='REAX forces')
+			plt.xlabel('Atoms (total system lead (Pb) forces, sorted by system energy)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_4')
+
+
+			plt.figure(6)
+			plt.plot(real_Cl_F_by_system, label='HSE06/TZVP forces')
+			plt.plot(test_Cl_F_by_system, label='REAX forces')
+			plt.xlabel('Atoms (total system lead (Cl) forces, sorted by system energy)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_5')
+
+			plt.figure(7)
+			real_Pb_F_sorted,test_Pb_F_sorted = [list(x) for x in zip(*sorted(zip(real_Pb_F,test_Pb_F)))] #sort forces
+			plt.plot(real_Pb_F_sorted, label='HSE06/TZVP forces')
+			plt.plot(test_Pb_F_sorted, label='REAX forces')
+			plt.xlabel('Pb Atoms (sorted by force)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_6')
+
+			plt.figure(8)
+			plt.plot(real_Pb_F, label='HSE06/TZVP forces')
+			plt.plot(test_Pb_F, label='REAX forces')
+			plt.xlabel('Pb Atoms (not sorted by Force, sorted by system energy)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_7')
+
+			plt.figure(9)
+			real_Cl_F_sorted,test_Cl_F_sorted = [list(x) for x in zip(*sorted(zip(real_Cl_F,test_Cl_F)))] #sort forces
+			plt.plot(real_Cl_F_sorted, label='HSE06/TZVP forces')
+			plt.plot(test_Cl_F_sorted, label='REAX forces')
+			plt.xlabel('Cl Atoms (sorted by force)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_8')
+
+			plt.figure(10)
+			plt.plot(real_Cl_F, label='HSE06/TZVP forces')
+			plt.plot(test_Cl_F, label='REAX forces')
+			plt.xlabel('Cl Atoms (not sorted by Force, sorted by system energy)')
+			plt.ylabel('Force (kcal/mol/Angstrom)')
+			plt.legend(bbox_to_anchor=(0.6, 0.9), bbox_transform=plt.gcf().transFigure)
+			plt.title('%s REAX fit' % dataset.name)
+			plt.savefig('../figures/' + run_name + '_forces_plot_9')
+
 		plt.show()
 		exit()
 	
@@ -252,6 +357,8 @@ def run(run_name, other_run_names=[],restart=False):
 
 	default_input='../input.reax'
 	# default_input='testf0_best.reax'
+	default_input='forces_correction_24_included_1_best.reax'	
+	# default_input='forces_correction_24_included2_best.reax'
 
 
 	if restart:
@@ -471,7 +578,7 @@ def if_multiprocessing_does_not_work():
 		this_job = int(sys.argv[2])
 		n_other_jobs = int(sys.argv[3])
 		run(jobname+str(this_job), [jobname+str(other) for other in range(n_other_jobs) if other!=this_job])
-
-# run('testpo')
-run_multiple('forces_correction_24_included', 4)
+run_name = 'Oct_27_PbCl_24'
+run('Oct_27_PbCl_24')
+# run_multiple('oct_27_PbCl_24_vac', 4)
 
