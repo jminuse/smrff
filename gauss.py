@@ -279,11 +279,11 @@ def read_PbCl_jobs(name):
 def run_PbCl_24_def2svp(runname,atoms):
 	g09.job(runname,'HSEH1PBE/Def2SVP Force SCRF(Solvent=Water)',atoms,queue='batch').wait()
 
-def PbCl_24_svp_3():
-	frames = read_PbCl_jobs('PbCl_24_svp_3')
+def PbCl_24_svp():
+	frames = read_PbCl_jobs('PbCl_24_svp')
 	frames = [frames[i] for i in range(0,len(frames),6)]
 	for i,frame in enumerate(frames):
-		runname = 'PbCl_24_def2svp_%d' % i
+		runname = 'PbCl_24_def2svp_0_%d' % i
 		procs=Process(target=run_PbCl_24_def2svp,args=(runname,frame[1]))
 		procs.start()
 		print 'Running ' + runname
@@ -293,10 +293,10 @@ def run_PbCl_24_vac(runname,atoms,prev):
 	g09.job(runname, 'HSEH1PBE/Def2TZVP Force Guess=Read',atoms, previous=prev, queue='batch',force=True).wait()
 
 
-def PbCl_24_vac_3():
+def PbCl_24_vac_4():
 	for root, dirs, file_list in os.walk("gaussian"):
 		for ff in file_list:
-			if ff.endswith('.log') and ff.startswith('PbCl_24_def2svp'):
+			if ff.endswith('.log') and ff.startswith('PbCl_24_def2svp_4_'):
 				old_job = ff[:-4]
 				runname = old_job.replace('def2svp', 'vac')
 				e, atoms = g09.parse_atoms(old_job)
@@ -307,15 +307,18 @@ def PbCl_24_vac_3():
 				procs.start()
 
 # PbCl_24_vac_3()
-def PbCl_24_vac_3_cml():
+
+def PbCl_24_vac_04_cml():
 	for root, dirs, file_list in os.walk("gaussian"):
 		for ff in file_list:
-			if ff.endswith('.log') and ff.startswith('PbCl_24_vac'):
+			if ff.endswith('.log') and (ff.startswith('PbCl_24_vac_0') or ff.startswith('PbCl_24_vac_4')):
+				print ff
 				name = ff[:-4]
 				e, atoms = g09.parse_atoms(name)
+				print atoms
 				if os.path.exists('gaussian/%s.cml' % name):
 					print name +'.cml ALREADY EXISTS, SKIPPING'
 					continue
 				files.write_cml(atoms,[],name=name)
 
-PbCl_24_vac_3_cml()
+PbCl_24_vac_04_cml()
